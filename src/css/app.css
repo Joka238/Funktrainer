@@ -1306,3 +1306,9 @@ body.show-text .msg .hidden-text {
   font: inherit;
   user-select: text;
 }
+
+#eval-play {
+  margin-top: 10px;
+  padding: 5px 10px;
+  font-size: 12px;
+}

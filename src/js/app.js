@@ -290,6 +290,7 @@ radio.on('ptt-up', async () => {
   renderSttStatus();
   let text = '';
   try {
+    lastRecording = rec.samples.slice(); // Kopie – das Original wird an den Worker übergeben
     text = await recognizer.transcribe(rec.samples, vocabulary());
   } catch (e) {
     toast(`Spracherkennung fehlgeschlagen: ${e.message}`);
@@ -310,6 +311,21 @@ function vocabulary() {
   const brief = `${scenario.briefing || ''} ${$('#task').textContent || ''}`;
   for (const m of brief.matchAll(/„([^“]+)“/g)) words.push(m[1]);
   return words;
+}
+
+let lastRecording = null;
+let playbackCtx = null;
+
+/** Letzte Aufnahme so abspielen, wie sie an die Spracherkennung ging (16 kHz). */
+function playLastRecording() {
+  if (!lastRecording) return;
+  playbackCtx = playbackCtx || new AudioContext();
+  const buf = playbackCtx.createBuffer(1, lastRecording.length, 16000);
+  buf.copyToChannel(lastRecording, 0);
+  const src = playbackCtx.createBufferSource();
+  src.buffer = buf;
+  src.connect(playbackCtx.destination);
+  src.start();
 }
 
 function submitTransmission(text, durationSec, issues = []) {
@@ -429,6 +445,8 @@ function showEval(entry) {
   const items = [...(entry.findings || [])].sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level]);
   $('#eval-findings').innerHTML = items.map((f) => `<li class="${f.level}">${esc(f.text)}</li>`).join('');
   $('#eval-sample').innerHTML = entry.sample && entry.score !== 100 ? `Musterlösung: <b>${esc(entry.sample)}</b>` : '';
+  const pb = $('#eval-play');
+  pb.hidden = !(lastRecording && entry.text !== undefined && entry.text !== null);
 }
 
 function coachFeedback(text, retry) {
@@ -890,6 +908,7 @@ $('#update-install').addEventListener('click', async () => {
 });
 
 $('#coach-next').addEventListener('click', () => engine.continue());
+$('#eval-play').addEventListener('click', playLastRecording);
 
 // ------------------------------------------------------------------ Start
 renderScenarioList();
