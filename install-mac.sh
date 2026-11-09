@@ -37,8 +37,10 @@ if [ ! -w "$DEST" ]; then
 fi
 
 # Laufende alte Version beenden und ersetzen
-osascript -e "tell application \"$APP_NAME\" to quit" >/dev/null 2>&1 || true
-sleep 1
+if pgrep -xq "$APP_NAME"; then
+  pkill -x "$APP_NAME" || true
+  sleep 1
+fi
 rm -rf "$DEST/$APP_NAME.app"
 
 echo "→ Installiere nach $DEST …"
