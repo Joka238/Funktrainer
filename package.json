@@ -1,0 +1,58 @@
+{
+  "name": "funktrainer",
+  "productName": "BOS Funktrainer",
+  "version": "1.0.0",
+  "description": "Trainingssimulator für den BOS-Sprechfunk (THW) mit Sprachein- und -ausgabe und simuliertem Funkgerät",
+  "main": "main.js",
+  "private": true,
+  "author": "Funktrainer",
+  "scripts": {
+    "postinstall": "node scripts/copy-vendor.js",
+    "start": "electron .",
+    "web": "node scripts/serve.js",
+    "test": "node --test tests/*.test.mjs",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@huggingface/transformers": "4.3.2",
+    "electron": "38.8.6",
+    "electron-builder": "26.0.12"
+  },
+  "build": {
+    "appId": "de.funktrainer.bos",
+    "productName": "BOS Funktrainer",
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.education",
+      "target": [
+        { "target": "dmg", "arch": ["universal"] }
+      ],
+      "icon": "build/icon.png",
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Der Funktrainer benötigt das Mikrofon, damit du wie am echten Funkgerät sprechen kannst."
+      }
+    },
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

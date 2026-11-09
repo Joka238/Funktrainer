@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BOS Funktrainer</title>
+    <link rel="stylesheet" href="css/app.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand-title">
+        <div class="logo">📻</div>
+        <div>
+          <h1>BOS Funktrainer</h1>
+          <div class="sub">Sprechfunk-Training für THW-Einsatzkräfte</div>
+        </div>
+      </div>
+      <div class="current">
+        <div id="cur-title">Keine Übung aktiv</div>
+        <div class="progress"><div id="cur-progress"></div></div>
+      </div>
+      <div class="top-actions">
+        <div class="score-pill" title="Durchschnitt der aktuellen Übung">
+          <span id="session-score">–</span><small>Punkte</small>
+        </div>
+        <button class="btn ghost" id="btn-rules">📘 Merkblatt</button>
+        <button class="btn ghost" id="btn-stats">📈 Statistik</button>
+        <button class="btn ghost" id="btn-settings">⚙️ Einstellungen</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <!-- linke Spalte -->
+      <section class="col col-left">
+        <div class="panel">
+          <h2>Übungen</h2>
+          <div id="scenario-list" class="scenario-list"></div>
+        </div>
+        <div class="panel" id="panel-lage">
+          <h2>Lage &amp; Auftrag</h2>
+          <div id="lage-empty" class="muted">Wähle links eine Übung aus. Schalte dann das Funkgerät ein (⏻) und stelle die richtige Gesprächsgruppe ein.</div>
+          <div id="lage" hidden>
+            <div class="callsign-card">
+              <div class="label">Dein Rufname</div>
+              <div id="own-callsign" class="callsign"></div>
+              <div id="own-unit" class="muted small"></div>
+            </div>
+            <div class="tg-req" id="tg-req"></div>
+            <div class="briefing" id="briefing"></div>
+            <div class="task" id="task" hidden></div>
+            <details class="stations" open>
+              <summary>Funkrufnamen</summary>
+              <ul id="stations"></ul>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <!-- mittlere Spalte: Funkgerät -->
+      <section class="col col-center">
+        <div id="radio-root"></div>
+        <div class="ptt-hint">
+          <kbd>Leertaste</kbd> oder <b>PTT</b> gedrückt halten zum Sprechen · Status: Ziffer + <b>✓</b>
+        </div>
+        <div class="stt-status" id="stt-status"></div>
+        <form class="type-box" id="type-form" autocomplete="off">
+          <input id="type-input" placeholder="Alternativ: Funkspruch eintippen und Enter …" />
+          <button class="btn" type="submit">Senden</button>
+        </form>
+        <div class="center-actions">
+          <button class="btn ghost" id="btn-hint" disabled>💡 Musterlösung</button>
+          <button class="btn ghost" id="btn-skip" disabled>⏭ Schritt überspringen</button>
+          <button class="btn ghost" id="btn-stop" disabled>⏹ Übung abbrechen</button>
+        </div>
+        <div class="hint-box" id="hint-box" hidden></div>
+      </section>
+
+      <!-- rechte Spalte -->
+      <section class="col col-right">
+        <div class="panel" id="panel-eval">
+          <h2>Bewertung <small class="muted">letzte Sendung</small></h2>
+          <div id="eval-empty" class="muted">Hier erscheint nach jeder Sendung die Bewertung deines Funkspruchs.</div>
+          <div id="eval" hidden>
+            <div class="eval-head">
+              <div class="eval-score" id="eval-score"></div>
+              <div>
+                <div class="eval-label" id="eval-label"></div>
+                <div class="eval-text" id="eval-text"></div>
+              </div>
+            </div>
+            <ul class="findings" id="eval-findings"></ul>
+            <div class="sample" id="eval-sample"></div>
+          </div>
+        </div>
+        <div class="panel panel-log">
+          <h2>
+            Funkprotokoll
+            <label class="toggle small"><input type="checkbox" id="toggle-text" /> Mitlesen</label>
+          </h2>
+          <div id="log" class="log"></div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Dialoge -->
+    <dialog id="dlg-settings" class="dlg">
+      <form method="dialog">
+        <h2>Einstellungen</h2>
+        <div class="form-grid">
+          <label>Funkart
+            <select id="set-mode">
+              <option value="digital">Digitalfunk (TETRA) – Sendeerlaubniston</option>
+              <option value="analog">Analogfunk – Rauschen &amp; Rauschfahne</option>
+            </select>
+          </label>
+          <label>Stimme der Gegenstellen
+            <select id="set-voice"></select>
+          </label>
+          <label>Sprechtempo
+            <input type="range" id="set-rate" min="0.7" max="1.4" step="0.05" />
+          </label>
+          <label>Spracherkennung (offline)
+            <select id="set-model"></select>
+          </label>
+          <label>Beschleunigung
+            <select id="set-device">
+              <option value="wasm">CPU (empfohlen, überall lauffähig)</option>
+              <option value="webgpu">GPU / WebGPU (experimentell, schneller)</option>
+            </select>
+          </label>
+          <label>Mikrofon
+            <select id="set-mic"></select>
+          </label>
+          <label>Buchstabiertafel für Musterlösungen
+            <select id="set-spell">
+              <option value="din2022">DIN 5009 (2022) – Aachen, Berlin, Chemnitz …</option>
+              <option value="trad">Traditionell – Anton, Berta, Cäsar …</option>
+            </select>
+          </label>
+          <label>Wartezeit bis zum erneuten Anruf (Sekunden)
+            <input type="number" id="set-timeout" min="5" max="60" />
+          </label>
+        </div>
+        <p class="muted small">
+          Die Spracherkennung (Whisper) läuft vollständig lokal. Beim ersten Start wird das Modell einmalig
+          heruntergeladen (Internet nötig) und danach zwischengespeichert.
+        </p>
+        <div class="dlg-actions">
+          <button class="btn ghost" value="cancel">Abbrechen</button>
+          <button class="btn" value="ok" id="set-save">Speichern</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="dlg-rules" class="dlg wide">
+      <form method="dialog">
+        <h2>Merkblatt Sprechfunk</h2>
+        <div class="rules" id="rules-content"></div>
+        <div class="dlg-actions"><button class="btn" value="ok">Schließen</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="dlg-stats" class="dlg wide">
+      <form method="dialog">
+        <h2>Statistik</h2>
+        <div id="stats-content"></div>
+        <div class="dlg-actions">
+          <button class="btn ghost" id="stats-clear" value="clear">Verlauf löschen</button>
+          <button class="btn" value="ok">Schließen</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="dlg-finish" class="dlg wide">
+      <form method="dialog">
+        <h2>Übung beendet</h2>
+        <div id="finish-content"></div>
+        <div class="dlg-actions">
+          <button class="btn ghost" value="close">Schließen</button>
+          <button class="btn ghost" value="again" id="finish-again">↻ Nochmal (neue Lage)</button>
+          <button class="btn" value="next" id="finish-next">Nächste Übung ▶</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" hidden></div>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
