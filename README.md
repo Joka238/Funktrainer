@@ -16,9 +16,13 @@ Keine Installation gewünscht? Die [portable Version](https://github.com/Joka238
 ### macOS (Apple Silicon & Intel)
 1. **[BOS-Funktrainer.dmg herunterladen](https://github.com/Joka238/Funktrainer/releases/latest/download/BOS-Funktrainer.dmg)**
 2. Datei öffnen und **BOS Funktrainer** in den Ordner **Programme** ziehen.
-3. Beim ersten Start meldet macOS, dass die App nicht überprüft werden kann (sie ist nicht bei Apple registriert):
-   **Systemeinstellungen → Datenschutz & Sicherheit → nach unten scrollen → „Dennoch öffnen“** klicken.
-   Ältere macOS-Versionen: Rechtsklick auf die App → **Öffnen**.
+3. Beim ersten Start meldet macOS „Apple konnte nicht überprüfen, ob ‚BOS Funktrainer‘ frei von Schadsoftware ist“ (die App ist nicht kostenpflichtig bei Apple registriert). So öffnest du sie trotzdem – nur einmal nötig:
+   1. Auf **Fertig** klicken (nicht „In den Papierkorb legen“).
+   2. **Systemeinstellungen → Datenschutz & Sicherheit** öffnen.
+   3. Ganz nach unten scrollen und bei „BOS Funktrainer“ auf **Dennoch öffnen** klicken, mit Passwort/Touch ID bestätigen.
+
+   Diese Anleitung steht auch im Installationsfenster der DMG-Datei.
+   Falls „Dennoch öffnen“ nicht erscheint, im Terminal eingeben: `xattr -dr com.apple.quarantine "/Applications/BOS Funktrainer.app"`
 
 Danach startet die App ganz normal per Doppelklick.
 
