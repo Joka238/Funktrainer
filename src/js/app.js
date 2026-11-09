@@ -8,6 +8,25 @@ import { Engine } from './engine.js';
 import { SCENARIOS, TALKGROUPS, STATUS_TEXT, buildScenario, buildShift } from './scenarios.js';
 import { loadSettings, saveSettings, loadHistory, addHistory, clearHistory } from './storage.js';
 import { DIN_2022, DIN_TRAD } from './spelling.js';
+import { LESSONS, buildLesson } from './tutorial.js';
+
+const KEY_TUT = 'funktrainer.tutorial.v1';
+function loadTutorialDone() {
+  try {
+    return JSON.parse(localStorage.getItem(KEY_TUT) || '[]');
+  } catch {
+    return [];
+  }
+}
+function markTutorialDone(id) {
+  const d = new Set(loadTutorialDone());
+  d.add(id);
+  try {
+    localStorage.setItem(KEY_TUT, JSON.stringify([...d]));
+  } catch {
+    /* ignorieren */
+  }
+}
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) =>
@@ -75,6 +94,12 @@ const io = {
   statusIn(code, text) {
     radio.statusIncoming(code, text);
   },
+  actionDone(step) {
+    if (step.what === 'power') return radio.usable;
+    if (step.what === 'tg') return radio.usable && radio.tg === step.value;
+    if (step.what === 'volume') return volumeTouched;
+    return false;
+  },
   emit(ev, data) {
     const h = handlers[ev];
     if (h) h(data);
@@ -100,6 +125,8 @@ const handlers = {
     $('#eval-empty').hidden = false;
     $('#log').innerHTML = '';
     hideHint();
+    $('#coach').hidden = !sc.tutorial;
+    radio.highlight(null);
     setRunning(true);
     addLog('note', `Übung „${sc.title}“ gestartet.`);
   },
@@ -136,6 +163,26 @@ const handlers = {
   hint({ text }) {
     showHint(text);
   },
+  coach(d) {
+    if (d.what === 'volume') volumeTouched = false;
+    $('#coach').hidden = false;
+    $('#coach-title').textContent = d.title || '';
+    $('#coach-text').textContent = d.text || '';
+    const exEl = $('#coach-example');
+    exEl.hidden = !d.example;
+    exEl.textContent = d.example || '';
+    $('#coach-feedback').hidden = true;
+    $('#coach-next').hidden = !d.needContinue;
+    $('#coach-todo').hidden = !!d.needContinue;
+    radio.highlight(d.highlight || null);
+  },
+  'coach-ok'({ text }) {
+    coachFeedback(text, false);
+    radio.highlight(null);
+  },
+  'coach-retry'({ text, sample }) {
+    coachFeedback(sample ? `${text}\nMusterlösung: „${sample}“` : text, true);
+  },
   finish(summary) {
     $('#cur-progress').style.width = '100%';
     setRunning(false);
@@ -148,11 +195,15 @@ const handlers = {
       score: summary.score,
       issues: issues.slice(0, 30),
     });
+    if (summary.scenario.tutorial) markTutorialDone(summary.scenario.id);
+    radio.highlight(null);
     renderScenarioList();
     showFinish(summary);
   },
   stopped() {
     setRunning(false);
+    radio.highlight(null);
+    $('#coach').hidden = true;
   },
   error({ message }) {
     toast(`Fehler im Übungsablauf: ${message}`);
@@ -160,14 +211,23 @@ const handlers = {
 };
 
 // ------------------------------------------------------------------ Funkgerät-Ereignisse
+let volumeTouched = false;
 radio.on('volume', (v) => {
+  volumeTouched = true;
+  engine.userAction('volume');
   audio.setVolume(v);
   voice.volume = v;
   settings.volume = v;
   saveSettings(settings);
 });
-radio.on('tg', updateTgReq);
-radio.on('power', updateTgReq);
+radio.on('tg', () => {
+  updateTgReq();
+  engine.userAction('tg');
+});
+radio.on('power', () => {
+  updateTgReq();
+  engine.userAction('power');
+});
 radio.on('status', (n) => {
   addLog('out', `Status ${n} – ${STATUS_TEXT[n]}`, { status: true });
   engine.userStatus(n);
@@ -207,6 +267,14 @@ radio.on('ptt-up', async () => {
   if (!rec) return;
   if (!rec.hasSpeech) {
     addLog('note', 'Sendung ohne erkennbare Sprache (zu leise oder Sprechtaste zu kurz gedrückt).');
+    if (engine.running && engine.waiting && engine.waiting.type === 'action') {
+      coachFeedback('Da kam nichts an. Ist das Mikrofon erlaubt und richtig gewählt (Einstellungen)? Halte die Taste gedrückt, solange du sprichst.', true);
+    }
+    return;
+  }
+  const probe = engine.running && engine.waiting && engine.waiting.type === 'action' && engine.waiting.what === 'ptt';
+  if (probe && recognizer.state !== 'ready') {
+    submitTransmission('', rec.durationSec, rec.issues);
     return;
   }
   if (recognizer.state !== 'ready') {
@@ -283,7 +351,8 @@ window.addEventListener('keydown', (e) => {
     radio.keypress(e.key);
   } else if (e.key === 'Enter') {
     e.preventDefault();
-    radio.confirm();
+    if (engine.waiting && engine.waiting.type === 'continue') engine.continue();
+    else radio.confirm();
   } else if (e.key === 'Escape') {
     radio.cancel();
   } else if (e.key === 'ArrowLeft') {
@@ -351,6 +420,14 @@ function showEval(entry) {
   $('#eval-sample').innerHTML = entry.sample && entry.score !== 100 ? `Musterlösung: <b>${esc(entry.sample)}</b>` : '';
 }
 
+function coachFeedback(text, retry) {
+  const f = $('#coach-feedback');
+  f.hidden = false;
+  f.textContent = text;
+  f.style.whiteSpace = 'pre-line';
+  f.className = 'coach-feedback' + (retry ? ' retry' : '');
+}
+
 function showHint(text) {
   const h = $('#hint-box');
   h.hidden = false;
@@ -383,11 +460,13 @@ function renderSttStatus(st) {
     case 'loading': {
       const pct = Math.round((s.progress || 0) * 100);
       const mb = s.total ? ` (${Math.round(s.loaded / 1e6)} / ${Math.round(s.total / 1e6)} MB)` : '';
-      el.innerHTML = `Spracherkennung wird geladen … ${pct}%${mb}<div class="bar"><div style="width:${pct}%"></div></div>`;
+      el.innerHTML = s.bundled
+        ? `Spracherkennung wird gestartet … ${pct}%<div class="bar"><div style="width:${pct}%"></div></div>`
+        : `Sprachmodell wird einmalig heruntergeladen … ${pct}%${mb}<div class="bar"><div style="width:${pct}%"></div></div>`;
       break;
     }
     case 'ready':
-      el.textContent = `🎙 Spracherkennung bereit (${(s.model || '').split('/').pop()}, ${s.device === 'webgpu' ? 'GPU' : 'CPU'})`;
+      el.textContent = `🎙 Spracherkennung bereit – offline (${(s.model || '').split('/').pop()}, ${s.device === 'webgpu' ? 'GPU' : 'CPU'})`;
       break;
     case 'error': {
       const net = /fetch|network|load/i.test(s.message || '');
@@ -430,13 +509,28 @@ function renderScenarioList() {
         <div class="s-desc">${esc(s.desc)}</div></button>`;
     })
     .join('');
-  document.querySelectorAll('.scenario').forEach((b) => b.addEventListener('click', () => startScenario(b.dataset.id)));
+  document.querySelectorAll('#scenario-list .scenario').forEach((b) => b.addEventListener('click', () => startScenario(b.dataset.id)));
+  renderTutorialList();
+}
+
+function renderTutorialList() {
+  const done = new Set(loadTutorialDone());
+  $('#tut-progress').textContent = `${LESSONS.filter((l) => done.has(l.id)).length} / ${LESSONS.length}`;
+  $('#tutorial-list').innerHTML = LESSONS.map(
+    (l) => `<button class="scenario ${l.id === currentId ? 'active' : ''}" data-id="${l.id}">
+      <div class="s-title"><span>${esc(l.title)}</span>${done.has(l.id) ? '<span class="done">✓</span>' : ''}</div>
+      <div class="s-desc">${esc(l.desc)}</div></button>`
+  ).join('');
+  document.querySelectorAll('#tutorial-list .scenario').forEach((b) => b.addEventListener('click', () => startScenario(b.dataset.id)));
 }
 
 function startScenario(id) {
   currentId = id;
   const seed = Math.floor(Math.random() * 1e9);
-  scenario = id === 'einsatzdienst' ? buildShift(seed, 4) : buildScenario(id, seed);
+  const isLesson = id.startsWith('tut-');
+  scenario = isLesson ? buildLesson(id) : id === 'einsatzdienst' ? buildShift(seed, 4) : buildScenario(id, seed);
+  // Lektion 1 beginnt bewusst mit ausgeschaltetem Gerät
+  if (id === LESSONS[0].id) radio.setPower(false);
   engine.opts.answerTimeoutSec = Number(settings.answerTimeout) || 15;
   engine.opts.spellTable = settings.spellTable;
   voice.cancel();
@@ -473,6 +567,9 @@ function showFinish(summary) {
         ${bad.length ? `<ul>${bad.map((f) => `<li>${esc(f.text)}</li>`).join('')}</ul>` : ''}</div>`;
     })
     .join('');
+  const lesson = summary.scenario.tutorial;
+  $('#finish-next').textContent = lesson ? 'Nächste Lektion ▶' : 'Nächste Übung ▶';
+  $('#finish-again').textContent = lesson ? '↻ Lektion wiederholen' : '↻ Nochmal (neue Lage)';
   $('#finish-content').innerHTML = `<div class="finish-score">${summary.score}</div>
     <div class="finish-verdict">${verdict(summary.score)} · ${summary.errorCount} Fehler</div>
     <div class="finish-list">${list}</div>`;
@@ -484,7 +581,10 @@ function showFinish(summary) {
 $('#dlg-finish').addEventListener('close', () => {
   const v = $('#dlg-finish').returnValue;
   if (v === 'again') startScenario(currentId);
-  if (v === 'next') {
+  if (v === 'next' && currentId.startsWith('tut-')) {
+    const i = LESSONS.findIndex((l) => l.id === currentId);
+    startScenario(i + 1 < LESSONS.length ? LESSONS[i + 1].id : SCENARIOS[0].id);
+  } else if (v === 'next') {
     const ids = SCENARIOS.map((s) => s.id);
     const i = ids.indexOf(currentId);
     startScenario(currentId === 'einsatzdienst' ? 'einsatzdienst' : ids[(i + 1) % ids.length]);
@@ -660,8 +760,21 @@ $('#toggle-text').addEventListener('change', (e) => {
   saveSettings(settings);
 });
 
+$('#coach-next').addEventListener('click', () => engine.continue());
+
 // ------------------------------------------------------------------ Start
 renderScenarioList();
+if (!loadTutorialDone().length && !loadHistory().length && !localStorage.getItem('funktrainer.welcomed')) {
+  try {
+    localStorage.setItem('funktrainer.welcomed', '1');
+  } catch {
+    /* ignorieren */
+  }
+  $('#dlg-welcome').showModal();
+}
+$('#dlg-welcome').addEventListener('close', () => {
+  if ($('#dlg-welcome').returnValue === 'tutorial') startScenario(LESSONS[0].id);
+});
 addLog('note', 'Willkommen beim BOS Funktrainer! Wähle eine Übung, schalte das Funkgerät mit ⏻ ein und stelle die Gesprächsgruppe ein.');
 recognizer.load(settings.model, settings.device);
 voice.ready.then(() => {

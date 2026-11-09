@@ -1,8 +1,8 @@
 // Wrapper um den Spracherkennungs-Worker.
 export const MODELS = {
-  'Xenova/whisper-tiny': 'Whisper Tiny – sehr schnell, ungenau (~40 MB)',
-  'Xenova/whisper-base': 'Whisper Base – schnell, solide (~80 MB)',
-  'Xenova/whisper-small': 'Whisper Small – genau, langsamer (~250 MB)',
+  'Xenova/whisper-tiny': 'Whisper Tiny – sehr schnell, ungenau (Download ~40 MB)',
+  'Xenova/whisper-base': 'Whisper Base – schnell, solide (in der App enthalten)',
+  'Xenova/whisper-small': 'Whisper Small – genau, langsamer (Download ~250 MB)',
 };
 
 export class Recognizer {
@@ -49,13 +49,17 @@ export class Recognizer {
             loaded += f.loaded;
             total += f.total;
           }
-          this.onStatus({ state: 'loading', progress: total ? loaded / total : 0, loaded, total });
+          this.onStatus({ state: 'loading', progress: total ? loaded / total : 0, loaded, total, bundled: this.bundled });
         }
         break;
       }
+      case 'source':
+        this.bundled = msg.bundled;
+        this.onStatus({ state: 'loading', progress: 0, bundled: msg.bundled });
+        break;
       case 'ready':
         this.state = 'ready';
-        this.onStatus({ state: 'ready', device: msg.device, model: msg.model });
+        this.onStatus({ state: 'ready', device: msg.device, model: msg.model, bundled: msg.bundled });
         break;
       case 'result': {
         const p = this.pending.get(msg.id);

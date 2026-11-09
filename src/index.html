@@ -32,6 +32,26 @@
     <main class="layout">
       <!-- linke Spalte -->
       <section class="col col-left">
+        <div class="panel coach" id="coach" hidden>
+          <div class="coach-head">
+            <div class="coach-avatar">👷</div>
+            <div>
+              <div class="coach-label">Ausbilder</div>
+              <div class="coach-title" id="coach-title"></div>
+            </div>
+          </div>
+          <div class="coach-text" id="coach-text"></div>
+          <pre class="coach-example" id="coach-example" hidden></pre>
+          <div class="coach-feedback" id="coach-feedback" hidden></div>
+          <div class="coach-actions">
+            <span class="coach-todo" id="coach-todo" hidden>👉 Jetzt du – am Funkgerät</span>
+            <button class="btn" id="coach-next" hidden>Weiter ▶</button>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>Tutorial <small class="muted" id="tut-progress"></small></h2>
+          <div id="tutorial-list" class="scenario-list"></div>
+        </div>
         <div class="panel">
           <h2>Übungen</h2>
           <div id="scenario-list" class="scenario-list"></div>
@@ -179,6 +199,25 @@
           <button class="btn ghost" value="close">Schließen</button>
           <button class="btn ghost" value="again" id="finish-again">↻ Nochmal (neue Lage)</button>
           <button class="btn" value="next" id="finish-next">Nächste Übung ▶</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="dlg-welcome" class="dlg">
+      <form method="dialog">
+        <h2>Willkommen beim BOS Funktrainer 👋</h2>
+        <p>
+          Hier trainierst du Sprechfunk wie im Einsatz: Die Gegenstellen sprechen mit dir, du antwortest über das Mikrofon
+          und das simulierte Funkgerät – und bekommst nach jeder Sendung eine Bewertung.
+        </p>
+        <p>
+          <b>Neu hier oder lange nicht gefunkt?</b> Das Tutorial (6 kurze Lektionen, ca. 20 Minuten) zeigt dir Schritt für
+          Schritt die Bedienung des Geräts und die wichtigsten Regeln – mit Ausbilder und direkter Praxis.
+        </p>
+        <p class="muted small">Tipp: Ein Headset verbessert die Spracherkennung deutlich.</p>
+        <div class="dlg-actions">
+          <button class="btn ghost" value="skip">Direkt zu den Übungen</button>
+          <button class="btn" value="tutorial">Tutorial starten ▶</button>
         </div>
       </form>
     </dialog>

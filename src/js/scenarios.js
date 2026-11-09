@@ -50,7 +50,7 @@ const SPELL_ITEMS = [
 const ABSCHNITTE = ['Nord', 'Süd', 'Ost', 'West'];
 
 /** Suchmuster für eine Straße ("Hauptstraße" -> ["hauptstr*", "haupt strasse"]). */
-function streetAny(street) {
+export function streetAny(street) {
   const f = fold(street);
   const out = [f];
   const m = f.match(/^(.*?)(strasse|weg|platz|allee)$/);
@@ -100,7 +100,7 @@ function rxHier(who, cs) {
 const ENDE_INFO =
   'In der Regel beendet die Stelle das Gespräch, die es begonnen hat. Ein "Verstanden, Ende" ist hier aber vertretbar.';
 
-function station(ctx) {
+export function station(ctx) {
   return {
     ztr: { name: `Zugtrupp (${ctx.ztr.full})`, cs: ctx.ztr },
     lst: { name: `Leitstelle (${ctx.lst.full})`, cs: ctx.lst },

@@ -1128,3 +1128,95 @@ body.show-text .msg .hidden-text {
 .stt-status a {
   color: var(--accent-2);
 }
+
+/* ------------------------------------------------------------ Tutorial */
+.coach {
+  border-color: #3d6fd6;
+  background: linear-gradient(180deg, #172a4a, var(--panel));
+}
+.coach-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.coach-avatar {
+  font-size: 26px;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  background: #22406f;
+  border-radius: 50%;
+}
+.coach-label {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #9fc0ff;
+}
+.coach-title {
+  font-weight: 700;
+  font-size: 15px;
+}
+.coach-text {
+  line-height: 1.5;
+}
+.coach-example {
+  white-space: pre-wrap;
+  font-family: 'SF Mono', Consolas, monospace;
+  font-size: 12px;
+  background: #0f141b;
+  color: #b9d3ff;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 10px 0 0;
+  user-select: text;
+}
+.coach-feedback {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  line-height: 1.45;
+  background: #173826;
+  color: #b6f0c8;
+}
+.coach-feedback.retry {
+  background: #3a2c10;
+  color: #ffe2a3;
+}
+.coach-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  min-height: 34px;
+}
+.coach-todo {
+  color: #e9c46a;
+  font-weight: 600;
+  font-size: 13px;
+}
+#coach-next {
+  margin-left: auto;
+}
+.scenario .done {
+  color: var(--ok);
+  font-weight: 700;
+}
+.tut-hl {
+  outline: 3px solid #ffd34d !important;
+  outline-offset: 3px;
+  animation: hl 1s ease-in-out infinite alternate;
+}
+@keyframes hl {
+  from {
+    outline-color: rgba(255, 211, 77, 1);
+  }
+  to {
+    outline-color: rgba(255, 211, 77, 0.25);
+  }
+}
+.dlg p {
+  line-height: 1.55;
+}

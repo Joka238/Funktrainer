@@ -268,6 +268,20 @@ export class Radio {
   }
 
   // ------------------------------------------------------------ Anzeige
+  /** Tutorial: Bedienelement hervorheben (power, tg, vol, ptt, keypad, display) oder null. */
+  highlight(name) {
+    const map = {
+      power: ['.key-power'],
+      tg: ['.knob-tg', '.nav-left', '.nav-right'],
+      vol: ['.knob-vol'],
+      ptt: ['.ptt'],
+      keypad: ['.keypad', '.key-ok'],
+      display: ['.display'],
+    };
+    this.root.querySelectorAll('.tut-hl').forEach((e) => e.classList.remove('tut-hl'));
+    for (const sel of map[name] || []) this.root.querySelectorAll(sel).forEach((e) => e.classList.add('tut-hl'));
+  }
+
   setMode(mode) {
     this.mode = mode;
     this.render();

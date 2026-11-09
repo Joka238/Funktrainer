@@ -1,7 +1,9 @@
 // Web Worker: Offline-Spracherkennung mit Whisper (transformers.js / ONNX Runtime).
 import { pipeline, env } from '../vendor/transformers.min.js';
 
-env.allowLocalModels = false;
+// Mitgeliefertes Modell (src/models) bevorzugen, sonst einmalig aus dem Internet laden
+env.allowLocalModels = true;
+env.localModelPath = new URL('../models/', import.meta.url).href;
 env.useBrowserCache = true;
 const VENDOR = new URL('../vendor/', import.meta.url).href;
 env.backends.onnx.wasm.wasmPaths = {
@@ -32,6 +34,14 @@ async function load(model, device) {
     postMessage({ type: 'ready', model, device: 'cached' });
     return;
   }
+  let bundled = false;
+  try {
+    const r = await fetch(`${env.localModelPath}${model}/config.json`, { method: 'HEAD' });
+    bundled = r.ok;
+  } catch {
+    bundled = false;
+  }
+  postMessage({ type: 'source', bundled });
   const progress_callback = (p) => postMessage({ type: 'progress', data: p });
   let usedDevice = 'wasm';
   if (device === 'webgpu' && 'gpu' in navigator) {
@@ -55,7 +65,7 @@ async function load(model, device) {
     });
   }
   loadedModel = model;
-  postMessage({ type: 'ready', model, device: usedDevice });
+  postMessage({ type: 'ready', model, device: usedDevice, bundled });
 }
 
 async function transcribe(id, audio) {

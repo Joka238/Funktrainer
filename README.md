@@ -4,8 +4,34 @@ Ein Trainingssimulator für den **BOS-Sprechfunk** mit Fokus auf den THW-Einsatz
 
 Gegenstellen wie Zugtrupp und Leitstelle rufen dich per Sprachausgabe an. Du antwortest wie in echt **über das Mikrofon und die Sprechtaste** eines simulierten Handfunkgeräts. Jede Sendung wird laufend nach den Regeln der Sprechfunk-Dienstvorschrift bewertet.
 
+## Installation (2 Minuten)
+
+### Windows
+1. **[BOS-Funktrainer-Setup.exe herunterladen](https://github.com/Joka238/Funktrainer/releases/latest/download/BOS-Funktrainer-Setup.exe)**
+2. Doppelklick auf die Datei. Falls Windows „Der Computer wurde durch Windows geschützt“ meldet: **Weitere Informationen → Trotzdem ausführen**.
+3. Fertig – der Funktrainer startet automatisch und liegt danach auf dem Desktop und im Startmenü.
+
+Keine Installation gewünscht? Die [portable Version](https://github.com/Joka238/Funktrainer/releases/latest/download/BOS-Funktrainer-Portable.exe) läuft direkt, z. B. vom USB-Stick.
+
+### macOS (Apple Silicon & Intel)
+1. **[BOS-Funktrainer.dmg herunterladen](https://github.com/Joka238/Funktrainer/releases/latest/download/BOS-Funktrainer.dmg)**
+2. Datei öffnen und **BOS Funktrainer** in den Ordner **Programme** ziehen.
+3. Beim ersten Start meldet macOS, dass die App nicht überprüft werden kann (sie ist nicht bei Apple registriert):
+   **Systemeinstellungen → Datenschutz & Sicherheit → nach unten scrollen → „Dennoch öffnen“** klicken.
+   Ältere macOS-Versionen: Rechtsklick auf die App → **Öffnen**.
+
+Danach startet die App ganz normal per Doppelklick.
+
+### Beim ersten Start
+- **Mikrofon erlauben**, wenn gefragt wird.
+- Das **Sprachmodell ist bereits enthalten** – die Spracherkennung funktioniert sofort und komplett offline.
+- Der Funktrainer bietet dir das **Tutorial** an – empfohlen, auch wenn du schon länger funkst.
+- Eine **deutsche Systemstimme** ist auf macOS („Anna“) und deutschem Windows („Hedda“/„Katja“) vorinstalliert. Falls nicht: unter Windows *Einstellungen → Zeit und Sprache → Sprache → Deutsch → Sprachausgabe* hinzufügen.
+- Tipp: Ein **Headset** verbessert die Spracherkennung deutlich.
+
 ## Funktionen
 
+- **Tutorial mit Ausbilder:** 6 kurze Lektionen führen Schritt für Schritt durch Gerätebedienung, Anruf, Meldung, Wiederholen/Warten, Buchstabieren und Lagemeldung. Erklärung → Beispiel → sofort selbst am Gerät ausprobieren. Das jeweils benötigte Bedienelement wird am Funkgerät hervorgehoben, und Fehler werden direkt erklärt und so lange wiederholt, bis es klappt.
 - **Simuliertes Handfunkgerät (HRT)** mit Display und Ein-/Ausschalter. Gesprächsgruppe wählst du per Drehknopf oder ◀ ▶, außerdem gibt es Lautstärke, Statustasten (Ziffer + ✓), Notruftaste, Sende-/Empfangs-LED und eine Pegelanzeige beim Senden.
 - **Sprechtaste:** PTT-Knopf am Gerät gedrückt halten oder die **Leertaste**. Im Digitalfunk-Modus ertönt ein Sendeerlaubniston.
 - **Sprachausgabe** der Gegenstellen über die Systemstimmen von macOS bzw. Windows. Mehrere Stationen haben unterschiedliche Stimmlagen.
@@ -50,19 +76,9 @@ Rufnamen, Orte, Adressen und Lagen werden bei jedem Durchlauf zufällig erzeugt.
 - Sprechtechnik: zu früh gesprochen (vor dem Sendeerlaubniston) oder Sprechtaste zu früh losgelassen
 - Statusmeldungen über das Funkgerät
 
-## Installation
+## Für Entwickler
 
-### Fertige Version herunterladen
-
-Unter **GitHub → Actions → Build** (oder bei Releases) liegen fertige Pakete:
-
-- **macOS:** `BOS Funktrainer-x.y.z-universal.dmg` (Apple Silicon & Intel)
-- **Windows:** Installer (`BOS Funktrainer Setup x.y.z.exe`) oder portable `.exe`
-
-> **macOS:** Die App ist nicht von Apple signiert. Beim ersten Start mit **Rechtsklick → Öffnen** starten, oder unter *Systemeinstellungen → Datenschutz & Sicherheit → Trotzdem öffnen*.
-> **Windows:** Bei der SmartScreen-Warnung auf *Weitere Informationen → Trotzdem ausführen* klicken.
-
-Ein neues Release erzeugst du mit einem Versions-Tag (z. B. `git tag v1.0.0 && git push --tags`). Die Pakete werden dann automatisch an das GitHub-Release angehängt.
+Neue Versionen: Version in `package.json` erhöhen und auf den Standard-Branch pushen – GitHub Actions baut die Pakete für macOS und Windows und veröffentlicht sie als Release (die Download-Links oben zeigen immer auf die neueste Version).
 
 ### Selbst bauen / entwickeln
 
@@ -74,6 +90,12 @@ npm install
 
 ```bash
 npm start
+```
+
+Sprachmodell zum Einbauen in die App herunterladen (sonst lädt die App es beim ersten Start):
+
+```bash
+npm run fetch-model
 ```
 
 Installationspakete bauen (auf dem jeweiligen Betriebssystem):
@@ -97,13 +119,6 @@ Ohne Electron im Browser (Chrome/Edge) starten, dann `http://localhost:5173` öf
 ```bash
 npm run web
 ```
-
-## Erster Start
-
-1. **Mikrofonzugriff erlauben**, wenn das System fragt.
-2. **Sprachmodell:** Beim ersten Start lädt die App das Whisper-Modell einmalig herunter (Standard „Base“, ca. 80 MB). Danach funktioniert die Erkennung offline. In den Einstellungen kannst du zwischen *Tiny* (schnell), *Base* und *Small* (am genauesten, ca. 250 MB) wählen.
-3. **Deutsche Systemstimme:** macOS hat in der Regel „Anna“ installiert. Unter Windows ist bei deutscher Systemsprache „Hedda“/„Katja“ dabei, sonst unter *Einstellungen → Zeit und Sprache → Sprache → Deutsch → Sprachausgabe* nachinstallieren. Weitere Stimmen machen die Gegenstellen unterscheidbarer.
-4. Übung wählen, Funkgerät mit **⏻** einschalten und die angezeigte **Gesprächsgruppe** einstellen. Dann geht's los.
 
 ## Bedienung
 

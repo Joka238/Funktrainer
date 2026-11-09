@@ -105,7 +105,7 @@ export class Engine {
   /** Eigene Sendung (Transkript). tr = { text, durationSec, tg, issues: [findings] } */
   userTransmission(tr) {
     if (!this.running) return;
-    if (this.waiting && this.waiting.type === 'tx') {
+    if (this.waiting && (this.waiting.type === 'tx' || (this.waiting.type === 'action' && this.waiting.what === 'ptt'))) {
       const w = this.waiting;
       this.waiting = null;
       w.resolve(tr);
@@ -155,6 +155,24 @@ export class Engine {
     });
   }
 
+  /** Tutorial: "Weiter" wurde gedrückt. */
+  continue() {
+    if (this.waiting && this.waiting.type === 'continue') {
+      const w = this.waiting;
+      this.waiting = null;
+      w.resolve();
+    }
+  }
+
+  /** Tutorial: Bedienhandlung am Funkgerät (power, tg, volume). */
+  userAction(what) {
+    const w = this.waiting;
+    if (w && w.type === 'action' && w.what === what && this.io.actionDone(w.step)) {
+      this.waiting = null;
+      w.resolve({});
+    }
+  }
+
   /** PTT gedrückt, während eine Gegenstelle spricht. */
   pttWhileReceiving() {
     if (!this.running || this.rxPttWarned) return;
@@ -184,6 +202,16 @@ export class Engine {
           break;
         case 'task':
           this.emit('task', { text: step.text });
+          break;
+        case 'explain':
+          await this.doExplain(step, token);
+          break;
+        case 'action':
+          await this.doAction(step, token);
+          break;
+        case 'setTg':
+          this.tg = step.tg;
+          this.emit('briefing', { text: step.briefing || '', tg: step.tg });
           break;
         case 'pause':
           await this.io.delay(step.seconds * 1000);
@@ -219,6 +247,43 @@ export class Engine {
           break;
       }
     }
+  }
+
+  async doExplain(step, token) {
+    this.emit('coach', { ...step, needContinue: true });
+    await new Promise((resolve, reject) => {
+      this.waiting = { type: 'continue', resolve, reject };
+    });
+    this.check(token);
+  }
+
+  async doAction(step, token) {
+    this.emit('coach', { ...step, needContinue: false });
+    if (step.what !== 'ptt' && this.io.actionDone(step)) {
+      this.emit('coach-ok', { text: step.done || 'Erledigt ✓' });
+      return;
+    }
+    const res = await new Promise((resolve, reject) => {
+      this.waiting = { type: 'action', what: step.what, step, resolve, reject };
+    });
+    this.check(token);
+    if (res && res.skipped) return;
+    if (step.what === 'ptt') {
+      const issues = res.issues || [];
+      const findings = [
+        { level: 'ok', text: res.text ? `Sendung empfangen – verstanden wurde: „${res.text}“` : 'Sendung empfangen.' },
+        ...issues,
+      ];
+      this.record({ label: step.label || 'Probesendung', text: res.text, findings, score: issues.length ? 80 : 100 });
+      this.emit('coach-ok', {
+        text: issues.length
+          ? 'Gesendet – aber schau dir die Hinweise zur Sprechtechnik rechts an.'
+          : step.done || 'Sauber gesendet ✓',
+      });
+    } else {
+      this.emit('coach-ok', { text: step.done || 'Erledigt ✓' });
+    }
+    await this.io.delay(900);
   }
 
   async doRx(step, token, remember = true) {
@@ -392,7 +457,7 @@ export class Engine {
         }
       }
 
-      this.record({
+      const entry = this.record({
         label: step.label,
         text: tr.text,
         sample,
@@ -400,11 +465,30 @@ export class Engine {
         understood: res.understood,
       });
 
+      // Tutorial: wiederholen, bis es ohne Fehler klappt
+      if (step.strict && res.understood && failures < 2 && (entry.findings.some((f) => f.level === 'error') || entry.score < 70)) {
+        failures++;
+        const first = entry.findings.find((f) => f.level === 'error') || entry.findings.find((f) => f.level === 'warn');
+        this.emit('coach-retry', {
+          text: `Noch nicht ganz: ${first ? first.text : 'schau dir die Bewertung an.'} Versuch es gleich nochmal – die Gegenstelle wartet.`,
+          sample: failures >= 2 ? sample : '',
+        });
+        continue;
+      }
+      if (step.strict) this.emit('coach-ok', { text: entry.score >= 90 ? 'Sehr gut! ✓' : 'Gut – die Hinweise rechts helfen beim nächsten Mal.' });
+
       const endIdx = [...res.tokens].reverse().find((t) => t.t === 'ende' || t.t === 'kommen');
       this.lastUserEnding = endIdx ? endIdx.t : null;
 
       if (!res.understood) {
         failures++;
+        if (step.strict && failures < 3) {
+          const first = entry.findings.find((f) => f.level === 'error');
+          this.emit('coach-retry', {
+            text: `${first ? first.text : 'Das wurde nicht verstanden.'} Versuch es nochmal.`,
+            sample: failures >= 2 ? sample : '',
+          });
+        }
         if (failures >= 3) {
           this.emit('hint', { text: `Musterlösung: „${sample}“ – die Übung geht weiter.` });
           return skip;
