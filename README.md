@@ -13,18 +13,24 @@ Gegenstellen wie Zugtrupp und Leitstelle rufen dich per Sprachausgabe an. Du ant
 
 Keine Installation gewünscht? Die [portable Version](https://github.com/Joka238/Funktrainer/releases/latest/download/BOS-Funktrainer-Portable.exe) läuft direkt, z. B. vom USB-Stick.
 
-### macOS (Apple Silicon & Intel)
-1. **[BOS-Funktrainer.dmg herunterladen](https://github.com/Joka238/Funktrainer/releases/latest/download/BOS-Funktrainer.dmg)**
-2. Datei öffnen und **BOS Funktrainer** in den Ordner **Programme** ziehen.
-3. Beim ersten Start meldet macOS „Apple konnte nicht überprüfen, ob ‚BOS Funktrainer‘ frei von Schadsoftware ist“ (die App ist nicht kostenpflichtig bei Apple registriert). So öffnest du sie trotzdem – nur einmal nötig:
-   1. Auf **Fertig** klicken (nicht „In den Papierkorb legen“).
-   2. **Systemeinstellungen → Datenschutz & Sicherheit** öffnen.
-   3. Ganz nach unten scrollen und bei „BOS Funktrainer“ auf **Dennoch öffnen** klicken, mit Passwort/Touch ID bestätigen.
+### macOS (Apple Silicon & Intel) – empfohlen: ein Befehl, keine Warnung
+1. **Terminal** öffnen: ⌘ + Leertaste drücken, „Terminal“ eingeben, Enter.
+2. Diese Zeile hineinkopieren und Enter drücken:
 
-   Diese Anleitung steht auch im Installationsfenster der DMG-Datei.
-   Falls „Dennoch öffnen“ nicht erscheint, im Terminal eingeben: `xattr -dr com.apple.quarantine "/Applications/BOS Funktrainer.app"`
+   ```bash
+   curl -fsSL https://github.com/Joka238/Funktrainer/releases/latest/download/install-mac.sh | bash
+   ```
 
-Danach startet die App ganz normal per Doppelklick.
+3. Fertig – der Funktrainer wird heruntergeladen, in „Programme“ installiert und gestartet. Keine Apple-Warnung, keine Systemeinstellungen.
+   Für ein Update einfach denselben Befehl nochmal ausführen.
+
+<details>
+<summary>Alternative: DMG-Datei herunterladen</summary>
+
+1. [BOS-Funktrainer.dmg herunterladen](https://github.com/Joka238/Funktrainer/releases/latest/download/BOS-Funktrainer.dmg), öffnen und die App in „Programme“ ziehen.
+2. Beim ersten Start erscheint „Apple konnte nicht überprüfen …“, weil die App nicht kostenpflichtig bei Apple registriert ist: **Fertig** klicken → **Systemeinstellungen → Datenschutz & Sicherheit** → ganz unten **Dennoch öffnen**. Nur einmal nötig.
+
+</details>
 
 ### Beim ersten Start
 - **Mikrofon erlauben**, wenn gefragt wird.

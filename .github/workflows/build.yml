@@ -81,10 +81,15 @@ jobs:
             - Windows: `BOS-Funktrainer-Setup.exe` (Installer) oder `BOS-Funktrainer-Portable.exe` (ohne Installation)
             - macOS: `BOS-Funktrainer.dmg` (Apple Silicon & Intel)
 
-            **macOS – erster Start:** Bei der Warnung „Apple konnte nicht überprüfen …“ auf *Fertig* klicken,
+            **macOS – einfachste Installation (ohne Apple-Warnung):** Terminal öffnen und eingeben:
+            `curl -fsSL https://github.com/Joka238/Funktrainer/releases/latest/download/install-mac.sh | bash`
+
+            **macOS – per DMG, erster Start:** Bei der Warnung „Apple konnte nicht überprüfen …“ auf *Fertig* klicken,
             dann *Systemeinstellungen → Datenschutz & Sicherheit* → ganz unten *Dennoch öffnen*. Nur einmal nötig.
 
             **Windows:** Bei „Der Computer wurde durch Windows geschützt“ auf *Weitere Informationen → Trotzdem ausführen*.
 
             Installationshinweise siehe README.
-          files: artifacts/*
+          files: |
+            artifacts/*
+            install-mac.sh
