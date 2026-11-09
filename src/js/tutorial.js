@@ -90,6 +90,7 @@ export const LESSONS = [
           },
           {
             kind: 'explain',
+            about: 'status',
             title: 'Status senden',
             text: 'Statusmeldungen sind kurze Zahlencodes, die ohne Sprechen an die Leitstelle gehen – das entlastet den Funkverkehr. Ziffer drücken, im Display prüfen, mit ✓ (oder Enter) senden.',
             example: ex('1 = Einsatzbereit über Funk', '2 = Einsatzbereit auf Wache/Unterkunft', '3 = Einsatzauftrag übernommen', '4 = Am Einsatzort', '5 = Sprechwunsch', '6 = Nicht einsatzbereit'),

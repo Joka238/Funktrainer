@@ -5,7 +5,8 @@ import { MicRecorder } from './mic.js';
 import { Recognizer, MODELS } from './stt.js';
 import { Radio } from './radio.js';
 import { Engine } from './engine.js';
-import { SCENARIOS, TALKGROUPS, STATUS_TEXT, buildScenario, buildShift } from './scenarios.js';
+import { SCENARIOS, TALKGROUPS, STATUS_TEXT, STATUS_SCENARIOS, buildScenario, buildShift, withoutStatus } from './scenarios.js';
+import { addTraffic } from './traffic.js';
 import { loadSettings, saveSettings, loadHistory, addHistory, clearHistory } from './storage.js';
 import { DIN_2022, DIN_TRAD } from './spelling.js';
 import { LESSONS, buildLesson } from './tutorial.js';
@@ -498,7 +499,7 @@ function renderScenarioList() {
   const best = bestScores();
   const items = [
     { id: 'einsatzdienst', title: 'Einsatzdienst (Zufall)', level: 'Alle', desc: 'Vier zufällige Übungen hintereinander – wie eine Schicht im Einsatz.' },
-    ...SCENARIOS,
+    ...visibleScenarios(),
   ];
   $('#scenario-list').innerHTML = items
     .map((s) => {
@@ -524,11 +525,19 @@ function renderTutorialList() {
   document.querySelectorAll('#tutorial-list .scenario').forEach((b) => b.addEventListener('click', () => startScenario(b.dataset.id)));
 }
 
+function visibleScenarios() {
+  return settings.statusPractice ? SCENARIOS : SCENARIOS.filter((s) => !STATUS_SCENARIOS.includes(s.id));
+}
+
 function startScenario(id) {
   currentId = id;
   const seed = Math.floor(Math.random() * 1e9);
   const isLesson = id.startsWith('tut-');
-  scenario = isLesson ? buildLesson(id) : id === 'einsatzdienst' ? buildShift(seed, 4) : buildScenario(id, seed);
+  const exclude = settings.statusPractice ? [] : STATUS_SCENARIOS;
+  scenario = isLesson ? buildLesson(id) : id === 'einsatzdienst' ? buildShift(seed, 4, { exclude }) : buildScenario(id, seed);
+  if (!settings.statusPractice) withoutStatus(scenario);
+  // Fremdverkehr (nicht im Tutorial – dort soll nichts ablenken)
+  addTraffic(scenario, isLesson ? 'aus' : settings.traffic, seed + 1);
   // Lektion 1 beginnt bewusst mit ausgeschaltetem Gerät
   if (id === LESSONS[0].id) radio.setPower(false);
   engine.opts.answerTimeoutSec = Number(settings.answerTimeout) || 15;
@@ -585,7 +594,7 @@ $('#dlg-finish').addEventListener('close', () => {
     const i = LESSONS.findIndex((l) => l.id === currentId);
     startScenario(i + 1 < LESSONS.length ? LESSONS[i + 1].id : SCENARIOS[0].id);
   } else if (v === 'next') {
-    const ids = SCENARIOS.map((s) => s.id);
+    const ids = visibleScenarios().map((s) => s.id);
     const i = ids.indexOf(currentId);
     startScenario(currentId === 'einsatzdienst' ? 'einsatzdienst' : ids[(i + 1) % ids.length]);
   }
@@ -721,6 +730,9 @@ async function openSettings() {
   $('#set-mic').value = settings.mic;
   $('#set-spell').value = settings.spellTable;
   $('#set-timeout').value = settings.answerTimeout;
+  $('#set-traffic').value = settings.traffic;
+  $('#set-status').checked = settings.statusPractice;
+  initUpdateBox();
   $('#dlg-settings').showModal();
 }
 $('#btn-settings').addEventListener('click', openSettings);
@@ -736,6 +748,9 @@ $('#dlg-settings').addEventListener('close', () => {
   settings.mic = $('#set-mic').value;
   settings.spellTable = $('#set-spell').value;
   settings.answerTimeout = Math.max(5, Math.min(60, Number($('#set-timeout').value) || 15));
+  settings.traffic = $('#set-traffic').value;
+  settings.statusPractice = $('#set-status').checked;
+  renderScenarioList();
   saveSettings(settings);
 
   audio.mode = settings.mode;
@@ -760,6 +775,84 @@ $('#toggle-text').addEventListener('change', (e) => {
   saveSettings(settings);
 });
 
+// ------------------------------------------------------------------ Updates
+const desktop = window.funktrainer && window.funktrainer.checkUpdate ? window.funktrainer : null;
+let updateInfo = null;
+const cleanErr = (e) => String(e && e.message ? e.message : e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
+
+function updateStatus(text) {
+  $('#update-status').textContent = text;
+}
+
+async function initUpdateBox() {
+  if (!desktop) {
+    $('#update-box').hidden = true;
+    return;
+  }
+  $('#update-version').textContent = `– installiert: Version ${await desktop.version()}`;
+  if (updateInfo && updateInfo.newer) showUpdateInfo(updateInfo);
+}
+
+function showUpdateInfo(info) {
+  updateInfo = info;
+  const btn = $('#update-install');
+  if (!info.newer) {
+    updateStatus(`✓ Du hast die neueste Version (${info.current}).`);
+    btn.hidden = true;
+    return;
+  }
+  const mb = info.size ? ` (${Math.round(info.size / 1e6)} MB)` : '';
+  if (info.canInstall) {
+    updateStatus(`Neue Version ${info.latest} verfügbar${mb}. Die App startet nach der Installation automatisch neu.`);
+    btn.textContent = 'Update herunterladen & installieren';
+  } else {
+    updateStatus(`Neue Version ${info.latest} verfügbar. ${info.reason}`);
+    btn.textContent = 'Download-Seite öffnen';
+  }
+  btn.hidden = false;
+}
+
+async function checkForUpdates(silent = false) {
+  if (!desktop) return null;
+  if (!silent) updateStatus('Suche nach Updates …');
+  try {
+    const info = await desktop.checkUpdate();
+    if (!silent || info.newer) showUpdateInfo(info);
+    return info;
+  } catch (e) {
+    if (!silent) updateStatus(`⚠ Update-Prüfung fehlgeschlagen: ${cleanErr(e)}`);
+    return null;
+  }
+}
+
+$('#update-check').addEventListener('click', () => checkForUpdates(false));
+$('#update-install').addEventListener('click', async () => {
+  if (!updateInfo) return;
+  if (!updateInfo.canInstall) {
+    desktop.openReleasePage();
+    return;
+  }
+  const btn = $('#update-install');
+  btn.disabled = true;
+  $('#update-check').disabled = true;
+  $('#update-bar').hidden = false;
+  updateStatus(`Lade Version ${updateInfo.latest} herunter …`);
+  const off = desktop.onUpdateProgress((p) => {
+    $('#update-bar-fill').style.width = `${Math.round(p * 100)}%`;
+    if (p >= 1) updateStatus('Installiere … die App startet gleich neu.');
+  });
+  try {
+    await desktop.installUpdate();
+    updateStatus('Installiere … die App startet gleich neu.');
+  } catch (e) {
+    off();
+    btn.disabled = false;
+    $('#update-check').disabled = false;
+    $('#update-bar').hidden = true;
+    updateStatus(`⚠ Update fehlgeschlagen: ${cleanErr(e)}`);
+  }
+});
+
 $('#coach-next').addEventListener('click', () => engine.continue());
 
 // ------------------------------------------------------------------ Start
@@ -777,6 +870,10 @@ $('#dlg-welcome').addEventListener('close', () => {
 });
 addLog('note', 'Willkommen beim BOS Funktrainer! Wähle eine Übung, schalte das Funkgerät mit ⏻ ein und stelle die Gesprächsgruppe ein.');
 recognizer.load(settings.model, settings.device);
+setTimeout(async () => {
+  const info = await checkForUpdates(true);
+  if (info && info.newer) toast(`Neue Version ${info.latest} verfügbar – in den Einstellungen mit einem Klick installieren.`, 'info');
+}, 4000);
 voice.ready.then(() => {
   if (!voice.available) {
     toast('Keine deutsche Systemstimme gefunden – Funksprüche werden nur als Text angezeigt. Unter macOS/Windows kann eine deutsche Stimme in den Systemeinstellungen installiert werden.', 'info');

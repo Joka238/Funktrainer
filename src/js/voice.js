@@ -17,8 +17,12 @@ const PROFILES = [
   { pitch: 1.15, rate: 1.1 },
   { pitch: 0.95, rate: 1.15 },
   { pitch: 0.75, rate: 0.98 },
+  { pitch: 1.25, rate: 1.0 },
+  { pitch: 0.9, rate: 1.2 },
+  { pitch: 1.05, rate: 0.92 },
+  { pitch: 0.8, rate: 1.1 },
 ];
-const SPEAKERS = ['ztr', 'lst', 'sib', 'fgr', 'x'];
+const SPEAKERS = ['ztr', 'lst', 'sib', 'fgr', 'o1', 'o2', 'f1', 'f2', 'r1'];
 
 export class Voice {
   constructor(audio) {

@@ -12,6 +12,8 @@ export const DEFAULT_SETTINGS = {
   mic: '',
   spellTable: 'din2022',
   answerTimeout: 15,
+  traffic: 'normal',
+  statusPractice: true,
   volume: 0.7,
 };
 

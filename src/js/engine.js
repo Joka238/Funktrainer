@@ -223,7 +223,7 @@ export class Engine {
         case 'chatterEnd':
           this.inChatter = false;
           await this.io.delay(1500);
-          if (!this.chatterViolation) {
+          if (!this.chatterViolation && !step.silent) {
             this.record({ label: step.label, findings: [{ level: 'ok', text: 'Nicht auf fremde Anrufe reagiert.' }] });
           }
           this.chatterViolation = false;

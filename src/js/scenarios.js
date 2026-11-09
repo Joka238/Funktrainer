@@ -647,6 +647,23 @@ export const SCENARIOS = [
   },
 ];
 
+/** IDs von Übungen, die hauptsächlich Statusmeldungen trainieren. */
+export const STATUS_SCENARIOS = ['status'];
+
+/**
+ * Entfernt alle Status-Aufgaben (Status setzen, eingehender Status, zugehörige Aufträge/Erklärungen).
+ * Verändert das Szenario-Objekt und gibt es zurück.
+ */
+export function withoutStatus(scenario) {
+  const steps = scenario.steps;
+  scenario.steps = steps.filter((s, i) => {
+    if (s.kind === 'status' || s.kind === 'statusIn' || s.about === 'status') return false;
+    if (s.kind === 'task' && steps[i + 1] && steps[i + 1].kind === 'status') return false;
+    return true;
+  });
+  return scenario;
+}
+
 /** Baut ein Szenario mit zufälligem Kontext. */
 export function buildScenario(id, seed) {
   const rnd = makeRng(seed);
@@ -658,10 +675,10 @@ export function buildScenario(id, seed) {
 }
 
 /** "Einsatzdienst": mehrere zufällige Szenarien hintereinander (gleicher Kontext). */
-export function buildShift(seed, count = 4) {
+export function buildShift(seed, count = 4, { exclude = [] } = {}) {
   const rnd = makeRng(seed);
   const ctx = makeContext(rnd);
-  const ids = SCENARIOS.map((s) => s.id);
+  const ids = SCENARIOS.map((s) => s.id).filter((id) => !exclude.includes(id));
   const chosen = [];
   while (chosen.length < count) {
     const id = rnd.pick(ids);

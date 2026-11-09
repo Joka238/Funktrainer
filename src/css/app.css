@@ -1220,3 +1220,52 @@ body.show-text .msg .hidden-text {
 .dlg p {
   line-height: 1.55;
 }
+
+.form-grid label.check {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--text);
+  font-size: 13px;
+}
+.form-grid label.check input {
+  margin-top: 3px;
+}
+.update-box {
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+}
+.update-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.update-status {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-line;
+}
+.update-status:empty {
+  display: none;
+}
+.update-box .bar {
+  height: 6px;
+  background: var(--panel);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+#update-bar-fill {
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  transition: width 0.2s;
+}
+#update-install {
+  margin-top: 10px;
+}

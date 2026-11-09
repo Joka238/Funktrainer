@@ -32,6 +32,9 @@ Keine Installation gewünscht? Die [portable Version](https://github.com/Joka238
 
 </details>
 
+### Updates
+In der App unter **Einstellungen → Nach Updates suchen**: Die neue Version wird mit einem Klick heruntergeladen, installiert und die App startet neu (Mac und Windows-Installer; die portable Windows-Version öffnet die Download-Seite). Beim Start prüft die App außerdem still, ob es ein Update gibt, und weist dann darauf hin.
+
 ### Beim ersten Start
 - **Mikrofon erlauben**, wenn gefragt wird.
 - Das **Sprachmodell ist bereits enthalten** – die Spracherkennung funktioniert sofort und komplett offline.
@@ -49,6 +52,8 @@ Keine Installation gewünscht? Die [portable Version](https://github.com/Joka238
 - **Funkatmosphäre:** Digitalfunk (TETRA) mit Sendeerlaubnis-/Besetzt-/Statustönen oder Analogfunk mit Rauschen und Rauschfahne. Dazu gibt es gestörte Übertragungen.
 - **Live-Bewertung** jeder Sendung (0–100 Punkte) mit konkreten Hinweisen und Musterlösung.
 - **Funkprotokoll** mit optionalem „Mitlesen“. Standardmäßig ist es aus, damit du hörend trainierst.
+- **Fremdverkehr:** Auf dem Kanal funken auch andere Einheiten (Zugtrupp, Fachgruppen, Nachbar-OV mit ähnlichem Rufnamen, Feuerwehr und Rettungsdienst bei der Leitstelle). Du musst Gespräche abwarten und darfst nur auf deinen eigenen Rufnamen reagieren. Menge einstellbar: Aus / Wenig / Normal / Viel.
+- **Statusmeldungen optional:** Wer keine Status üben will, schaltet sie in den Einstellungen ab – alle Status-Aufgaben entfallen dann.
 - **Statistik** mit Verlauf, Bestwerten und deinen häufigsten Fehlern.
 - **Merkblatt** mit Gesprächsablauf, Betriebsworten, Statustabelle und Buchstabiertafel (DIN 5009 neu und traditionell).
 - **Texteingabe als Alternative**, falls kein Mikrofon verfügbar ist.

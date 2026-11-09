@@ -1,5 +1,6 @@
 // Electron-Hauptprozess des BOS Funktrainers
-const { app, BrowserWindow, protocol, session, systemPreferences, shell } = require('electron');
+const { app, BrowserWindow, protocol, session, systemPreferences, shell, ipcMain } = require('electron');
+const updater = require('./updater');
 const path = require('path');
 const fs = require('fs');
 
@@ -78,6 +79,7 @@ async function createWindow() {
 
 app.whenReady().then(async () => {
   registerAppProtocol();
+  updater.register(ipcMain);
 
   // Mikrofon-Zugriff erlauben (nur für die eigene App-Origin)
   session.defaultSession.setPermissionRequestHandler((wc, permission, cb, details) => {

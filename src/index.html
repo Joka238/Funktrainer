@@ -126,6 +126,15 @@
     <dialog id="dlg-settings" class="dlg">
       <form method="dialog">
         <h2>Einstellungen</h2>
+        <div class="update-box" id="update-box">
+          <div class="update-head">
+            <div><b>Updates</b> <span class="muted small" id="update-version"></span></div>
+            <button type="button" class="btn ghost" id="update-check">Nach Updates suchen</button>
+          </div>
+          <div class="update-status" id="update-status"></div>
+          <div class="bar" id="update-bar" hidden><div id="update-bar-fill"></div></div>
+          <button type="button" class="btn" id="update-install" hidden>Update herunterladen &amp; installieren</button>
+        </div>
         <div class="form-grid">
           <label>Funkart
             <select id="set-mode">
@@ -160,10 +169,21 @@
           <label>Wartezeit bis zum erneuten Anruf (Sekunden)
             <input type="number" id="set-timeout" min="5" max="60" />
           </label>
+          <label>Fremdverkehr (Funkgespräche anderer Einheiten auf dem Kanal)
+            <select id="set-traffic">
+              <option value="aus">Aus – nur eigene Gespräche</option>
+              <option value="wenig">Wenig</option>
+              <option value="normal">Normal</option>
+              <option value="viel">Viel – reger Einsatzbetrieb</option>
+            </select>
+          </label>
+          <label class="check">
+            <input type="checkbox" id="set-status" />
+            <span>Statusmeldungen üben<br /><small class="muted">Aus: Status-Aufgaben entfallen in allen Übungen und im Tutorial.</small></span>
+          </label>
         </div>
         <p class="muted small">
-          Die Spracherkennung (Whisper) läuft vollständig lokal. Beim ersten Start wird das Modell einmalig
-          heruntergeladen (Internet nötig) und danach zwischengespeichert.
+          Die Spracherkennung (Whisper) läuft vollständig lokal auf deinem Rechner.
         </p>
         <div class="dlg-actions">
           <button class="btn ghost" value="cancel">Abbrechen</button>
