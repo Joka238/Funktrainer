@@ -1269,3 +1269,40 @@ body.show-text .msg .hidden-text {
 #update-install {
   margin-top: 10px;
 }
+
+.token-box {
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+.token-box summary {
+  cursor: pointer;
+  font-size: 13px;
+}
+.token-box ol {
+  padding-left: 18px;
+  line-height: 1.6;
+  margin: 6px 0 10px;
+}
+.token-box a {
+  color: var(--accent-2);
+}
+.token-box code {
+  background: var(--panel);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+.token-row {
+  display: flex;
+  gap: 8px;
+}
+.token-row input {
+  flex: 1;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 7px 8px;
+  font: inherit;
+  user-select: text;
+}

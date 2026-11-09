@@ -35,6 +35,8 @@ Keine Installation gewünscht? Die [portable Version](https://github.com/Joka238
 ### Updates
 In der App unter **Einstellungen → Nach Updates suchen**: Die neue Version wird mit einem Klick heruntergeladen, installiert und die App startet neu (Mac und Windows-Installer; die portable Windows-Version öffnet die Download-Seite). Beim Start prüft die App außerdem still, ob es ein Update gibt, und weist dann darauf hin.
 
+**Privates Repository:** Solange das Repository privat ist, braucht die App für Updates einen persönlichen GitHub-Zugangsschlüssel (nur Lesen). Einrichten unter *Einstellungen → Updates → Zugang für privates Repository* – dort steht eine Schritt-für-Schritt-Anleitung mit vorausgefülltem Link. Der Schlüssel wird verschlüsselt nur auf dem eigenen Rechner gespeichert.
+
 ### Beim ersten Start
 - **Mikrofon erlauben**, wenn gefragt wird.
 - Das **Sprachmodell ist bereits enthalten** – die Spracherkennung funktioniert sofort und komplett offline.

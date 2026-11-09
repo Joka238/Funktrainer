@@ -800,8 +800,34 @@ async function initUpdateBox() {
     return;
   }
   $('#update-version').textContent = `– installiert: Version ${await desktop.version()}`;
+  await renderTokenState();
   if (updateInfo && updateInfo.newer) showUpdateInfo(updateInfo);
 }
+
+async function renderTokenState() {
+  const has = await desktop.hasToken();
+  $('#token-state').textContent = has ? '– Schlüssel hinterlegt ✓' : '– kein Schlüssel';
+  $('#token-remove').hidden = !has;
+  $('#token-input').value = '';
+}
+
+$('#token-save').addEventListener('click', async () => {
+  const t = $('#token-input').value.trim();
+  if (!t) return;
+  if (!/^(github_pat_|ghp_)/.test(t)) {
+    updateStatus('⚠ Das sieht nicht wie ein GitHub-Schlüssel aus (beginnt mit „github_pat_“).');
+    return;
+  }
+  await desktop.setToken(t);
+  await renderTokenState();
+  $('#token-box').open = false;
+  checkForUpdates(false);
+});
+$('#token-remove').addEventListener('click', async () => {
+  await desktop.setToken('');
+  await renderTokenState();
+  updateStatus('Schlüssel entfernt.');
+});
 
 function showUpdateInfo(info) {
   updateInfo = info;

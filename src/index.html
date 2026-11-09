@@ -134,6 +134,24 @@
           <div class="update-status" id="update-status"></div>
           <div class="bar" id="update-bar" hidden><div id="update-bar-fill"></div></div>
           <button type="button" class="btn" id="update-install" hidden>Update herunterladen &amp; installieren</button>
+          <details class="token-box" id="token-box">
+            <summary>Zugang für privates Repository <span id="token-state" class="muted small"></span></summary>
+            <p class="small">
+              Solange das Repository privat ist, braucht die App einen persönlichen GitHub-Zugangsschlüssel, der nur
+              lesen darf. Einmalig einrichten:
+            </p>
+            <ol class="small">
+              <li><a href="https://github.com/settings/personal-access-tokens/new?name=Funktrainer-Updates&amp;description=Updates%20f%C3%BCr%20den%20BOS%20Funktrainer&amp;target_name=Joka238&amp;contents=read" target="_blank">Diesen Link öffnen</a> (bei GitHub angemeldet sein).</li>
+              <li>Bei <b>Repository access</b>: „Only select repositories“ → <b>Funktrainer</b> wählen.</li>
+              <li>Bei <b>Permissions → Contents</b>: „Read-only“ (ist vorausgewählt). Ablaufdatum möglichst lang.</li>
+              <li><b>Generate token</b> klicken, den Schlüssel (beginnt mit <code>github_pat_</code>) kopieren und hier einfügen.</li>
+            </ol>
+            <div class="token-row">
+              <input type="password" id="token-input" placeholder="github_pat_…" autocomplete="off" />
+              <button type="button" class="btn" id="token-save">Speichern</button>
+              <button type="button" class="btn ghost" id="token-remove" hidden>Entfernen</button>
+            </div>
+          </details>
         </div>
         <div class="form-grid">
           <label>Funkart

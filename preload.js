@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld('funktrainer', {
   checkUpdate: () => ipcRenderer.invoke('update:check'),
   installUpdate: () => ipcRenderer.invoke('update:install'),
   openReleasePage: () => ipcRenderer.invoke('update:open-page'),
+  hasToken: () => ipcRenderer.invoke('update:has-token'),
+  setToken: (t) => ipcRenderer.invoke('update:set-token', t),
   onUpdateProgress: (fn) => {
     const h = (_e, p) => fn(p);
     ipcRenderer.on('update:progress', h);

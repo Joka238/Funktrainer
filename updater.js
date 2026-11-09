@@ -2,7 +2,7 @@
 // Windows: Installer herunterladen und ausführen (ersetzt die App, startet neu).
 // macOS:   DMG laden, App austauschen und neu starten. Da die App die Datei selbst
 //          lädt (nicht der Browser), erscheint danach keine Apple-Warnung.
-const { app, net, shell } = require('electron');
+const { app, net, shell, safeStorage } = require('electron');
 const { spawn, execFile } = require('child_process');
 const fs = require('fs');
 const os = require('os');
@@ -10,6 +10,37 @@ const path = require('path');
 
 const REPO = 'Joka238/Funktrainer';
 const RELEASES_PAGE = `https://github.com/${REPO}/releases/latest`;
+
+// ---------------------------------------------------------------- Zugangsschlüssel
+// Für ein privates Repository: persönlicher GitHub-Token (nur Lesen), verschlüsselt gespeichert.
+const tokenFile = () => path.join(app.getPath('userData'), 'github-token.bin');
+
+function getToken() {
+  try {
+    const raw = fs.readFileSync(tokenFile());
+    return safeStorage.isEncryptionAvailable() ? safeStorage.decryptString(raw) : raw.toString('utf8');
+  } catch {
+    return '';
+  }
+}
+
+function setToken(token) {
+  const t = String(token || '').trim();
+  if (!t) {
+    fs.rmSync(tokenFile(), { force: true });
+    return false;
+  }
+  const data = safeStorage.isEncryptionAvailable() ? safeStorage.encryptString(t) : Buffer.from(t, 'utf8');
+  fs.writeFileSync(tokenFile(), data, { mode: 0o600 });
+  return true;
+}
+
+function apiHeaders(extra = {}) {
+  const h = { Accept: 'application/vnd.github+json', 'User-Agent': 'BOS-Funktrainer', ...extra };
+  const t = getToken();
+  if (t) h.Authorization = `Bearer ${t}`;
+  return h;
+}
 
 function compareVersions(a, b) {
   const pa = String(a).replace(/^v/, '').split('.').map((n) => parseInt(n, 10) || 0);
@@ -52,10 +83,16 @@ function installMode() {
 }
 
 async function check() {
-  const res = await net.fetch(`https://api.github.com/repos/${REPO}/releases/latest`, {
-    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'BOS-Funktrainer' },
-  });
-  if (res.status === 404) throw new Error('Keine Veröffentlichung gefunden (ist das Repository öffentlich?).');
+  const hasToken = !!getToken();
+  const res = await net.fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { headers: apiHeaders() });
+  if (res.status === 401) throw new Error('Der Zugangsschlüssel ist ungültig oder abgelaufen – bitte neu hinterlegen.');
+  if (res.status === 404 || res.status === 403) {
+    throw new Error(
+      hasToken
+        ? 'Kein Zugriff – hat der Zugangsschlüssel Leserechte („Contents: Read“) für das Funktrainer-Repository?'
+        : 'Das Repository ist privat. Hinterlege unten einmalig einen GitHub-Zugangsschlüssel, dann klappen Updates.'
+    );
+  }
   if (!res.ok) throw new Error(`GitHub antwortet mit Fehler ${res.status}.`);
   const rel = await res.json();
   const latest = String(rel.tag_name || '').replace(/^v/, '');
@@ -68,27 +105,49 @@ async function check() {
     newer: compareVersions(latest, current) > 0,
     notes: rel.body || '',
     size: asset ? asset.size : 0,
-    downloadUrl: asset ? asset.browser_download_url : null,
+    // Mit Token über die API laden (funktioniert auch bei privatem Repository)
+    downloadUrl: asset ? (hasToken ? asset.url : asset.browser_download_url) : null,
     canInstall: mode.canInstall && !!asset,
     reason: mode.canInstall ? (asset ? '' : 'Für dieses System liegt keine Update-Datei vor.') : mode.reason,
   };
 }
 
-async function download(url, dest, onProgress) {
-  const res = await net.fetch(url, { headers: { 'User-Agent': 'BOS-Funktrainer' } });
-  if (!res.ok || !res.body) throw new Error(`Download fehlgeschlagen (${res.status}).`);
-  const total = Number(res.headers.get('content-length')) || 0;
-  const out = fs.createWriteStream(dest);
-  const reader = res.body.getReader();
-  let loaded = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    loaded += value.length;
-    if (!out.write(Buffer.from(value))) await new Promise((r) => out.once('drain', r));
-    if (onProgress) onProgress(total ? loaded / total : 0);
-  }
-  await new Promise((resolve, reject) => out.end((err) => (err ? reject(err) : resolve())));
+/**
+ * Lädt eine Datei (mit Fortschritt). Weiterleitungen werden selbst behandelt:
+ * Der Zugangsschlüssel geht nur an api.github.com, nie an den Download-Server.
+ */
+function download(url, dest, onProgress, hops = 0) {
+  const https = require('https');
+  return new Promise((resolve, reject) => {
+    if (hops > 6) return reject(new Error('Zu viele Weiterleitungen.'));
+    const u = new URL(url);
+    const viaApi = u.hostname === 'api.github.com';
+    const headers = viaApi ? apiHeaders({ Accept: 'application/octet-stream' }) : { 'User-Agent': 'BOS-Funktrainer' };
+    const req = https.get(u, { headers }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        res.resume();
+        resolve(download(new URL(res.headers.location, u).href, dest, onProgress, hops + 1));
+        return;
+      }
+      if (res.statusCode !== 200) {
+        res.resume();
+        reject(new Error(`Download fehlgeschlagen (${res.statusCode}).`));
+        return;
+      }
+      const total = Number(res.headers['content-length']) || 0;
+      let loaded = 0;
+      const out = fs.createWriteStream(dest);
+      res.on('data', (chunk) => {
+        loaded += chunk.length;
+        if (onProgress && total) onProgress(loaded / total);
+      });
+      res.pipe(out);
+      out.on('finish', () => out.close(() => resolve()));
+      out.on('error', reject);
+      res.on('error', reject);
+    });
+    req.on('error', reject);
+  });
 }
 
 const run = (cmd, args) =>
@@ -151,6 +210,8 @@ function register(ipcMain) {
   );
   ipcMain.handle('update:open-page', () => shell.openExternal(RELEASES_PAGE));
   ipcMain.handle('app:version', () => app.getVersion());
+  ipcMain.handle('update:has-token', () => !!getToken());
+  ipcMain.handle('update:set-token', (_e, t) => setToken(t));
 }
 
 module.exports = { register, compareVersions };
