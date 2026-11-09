@@ -192,11 +192,8 @@ function checkSpelling(tokens, spec, findings, opts) {
   if (findPhrase(tokens, 'buchstabiere') < 0) {
     findings.push({ cat: 'content', level: 'minor', text: 'Buchstabieren mit "Ich buchstabiere" ankündigen.' });
   }
-  if (got.tables.has('nato')) {
-    findings.push({ cat: 'content', level: 'warn', text: 'NATO-Alphabet erkannt – im BOS-Funk die deutsche Buchstabiertafel (DIN 5009) verwenden.' });
-  }
-  if (got.tables.has('din2022') && got.tables.has('trad')) {
-    findings.push({ cat: 'content', level: 'info', text: 'Alte und neue Buchstabiertafel gemischt – besser einheitlich bleiben.' });
+  if (got.tables.size > 1) {
+    findings.push({ cat: 'content', level: 'info', text: 'Verschiedene Buchstabiertafeln gemischt – besser bei einer bleiben.' });
   }
   if (got.letters === want) {
     findings.push({ cat: 'content', level: 'ok', text: `Korrekt buchstabiert: ${want}` });

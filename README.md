@@ -57,7 +57,7 @@ In der App unter **Einstellungen → Nach Updates suchen**: Die neue Version wir
 - **Fremdverkehr:** Auf dem Kanal funken auch andere Einheiten (Zugtrupp, Fachgruppen, Nachbar-OV mit ähnlichem Rufnamen, Feuerwehr und Rettungsdienst bei der Leitstelle). Du musst Gespräche abwarten und darfst nur auf deinen eigenen Rufnamen reagieren. Menge einstellbar: Aus / Wenig / Normal / Viel.
 - **Statusmeldungen optional:** Wer keine Status üben will, schaltet sie in den Einstellungen ab – alle Status-Aufgaben entfallen dann.
 - **Statistik** mit Verlauf, Bestwerten und deinen häufigsten Fehlern.
-- **Merkblatt** mit Gesprächsablauf, Betriebsworten, Statustabelle und Buchstabiertafel (DIN 5009 neu und traditionell).
+- **Merkblatt** mit Gesprächsablauf, Betriebsworten, Statustabelle und Buchstabiertafel (DIN 5009 neu/traditionell und NATO).
 - **Texteingabe als Alternative**, falls kein Mikrofon verfügbar ist.
 
 ### Übungen
@@ -75,6 +75,11 @@ In der App unter **Einstellungen → Nach Updates suchen**: Die neue Version wir
 | Status & Sprechwunsch | Status 3/4/5 setzen, auf Sprechaufforderung „J“ reagieren |
 | Hörbereitschaft & Fremdverkehr | Nicht auf fremde Anrufe reagieren (Vorsicht bei ähnlichen Rufnamen!) |
 | Einsatzende & Einrücken | Auftrag quittieren, Status 1 und 2 |
+| Erkundung mit Rückfragen | Erstmeldung und drei Rückfragen des Zugtrupps (Personen, Statik, Dauer/Bedarf) |
+| Stärkemeldung & Abmarsch | Stärke 0/1/7/8 melden, Auftrag und Abmarschzeit, Abmarsch melden |
+| Marsch zum Einsatzort | Marschauftrag, Kontrollpunkt, Stau mit Umleitung, Ankunft – drei Gespräche |
+| Unfall eines Helfers | Notfallmeldung, Rückfragen zu Zustand und Zufahrt, Einweiser stellen |
+| Alarmierung durch die Leitstelle | Einsatzauftrag aufnehmen, Ausrücken und Eintreffen per Sprechfunk melden |
 | **Einsatzdienst (Zufall)** | Vier zufällige Übungen hintereinander |
 
 Rufnamen, Orte, Adressen und Lagen werden bei jedem Durchlauf zufällig erzeugt. So lernst du keine festen Antworten auswendig.
@@ -86,7 +91,7 @@ Rufnamen, Orte, Adressen und Lagen werden bei jedem Durchlauf zufällig erzeugt.
 - Abschluss jeder Sendung mit „kommen“ bzw. „Ende“, und wer das Gespräch beendet
 - Quittieren mit „Verstanden“ und Wiederholen wichtiger Eckdaten (Adresse, Zahlen)
 - Inhaltliche Vollständigkeit von Meldungen
-- Buchstabieren nach DIN 5009. Das NATO-Alphabet wird bemängelt.
+- Buchstabieren nach DIN 5009 (neu oder traditionell) oder NATO-Alphabet – alle werden erkannt, die Tafel für Musterlösungen ist einstellbar
 - „Wiederholen“ bei gestörtem Empfang
 - Funkdisziplin: „Warten“ einhalten, nicht in fremde Gespräche senden, nicht während einer laufenden Sendung drücken, richtige Gesprächsgruppe
 - Sprechweise: keine Höflichkeitsformeln, Grüße oder Füllwörter („bitte“, „danke“, „okay“, „äh“, „Roger“), „zwo“ statt „zwei“, nicht zu lang

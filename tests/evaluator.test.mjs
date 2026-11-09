@@ -91,7 +91,9 @@ test('Buchstabieren', () => {
   const r2 = evaluate('Quast, kommen', { type: 'message', own, spell: 'Quast' });
   assert.ok(!r2.understood);
   const r3 = evaluate('Ich buchstabiere Quebec Uniform Alfa Sierra Tango kommen', { type: 'message', own, spell: 'Quast' });
-  assert.ok(r3.findings.some((f) => /NATO/.test(f.text)));
+  assert.equal(r3.score, 100, JSON.stringify(r3.findings));
+  const r4 = evaluate('Ich buchstabiere Quebec Ulrich Aachen Sierra Tango kommen', { type: 'message', own, spell: 'Quast' });
+  assert.ok(r4.findings.some((f) => /gemischt/.test(f.text)));
 });
 
 test('Ende statt kommen', () => {
@@ -106,4 +108,12 @@ test('Funkprobe', () => {
   assert.equal(r.score, 100, JSON.stringify(r.findings));
   const r2 = evaluate('Hier Heros Musterstadt 21/52, verstehe gut, kommen', { type: 'funkprobe', own, target: ztr });
   assert.equal(r2.score, 100, JSON.stringify(r2.findings));
+});
+
+test('NATO-Musterlösung wird voll akzeptiert', async () => {
+  const { spellOut } = await import('../src/js/spelling.js');
+  const s = spellOut('Brixner', 'nato');
+  assert.equal(s, 'Bravo, Romeo, India, X-Ray, November, Echo, Romeo');
+  const r = evaluate(`Ich buchstabiere: ${s}, kommen.`, { type: 'message', own, spell: 'Brixner' });
+  assert.equal(r.score, 100, JSON.stringify(r.findings));
 });

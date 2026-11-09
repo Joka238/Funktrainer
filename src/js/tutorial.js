@@ -371,8 +371,8 @@ export const LESSONS = [
           {
             kind: 'explain',
             title: 'Buchstabieren',
-            text: 'Namen, die man falsch verstehen kann, werden buchstabiert. Kündige es mit „Ich buchstabiere“ an und nutze die Buchstabiertafel DIN 5009 – neu mit Städtenamen, die alte Tafel mit Vornamen wird ebenfalls verstanden. Das NATO-Alphabet gehört nicht in den BOS-Funk.',
-            example: ex('QUAST:', 'neu:  Quickborn, Unna, Aachen, Salzwedel, Tübingen', 'alt:  Quelle, Ulrich, Anton, Samuel, Theodor'),
+            text: 'Namen, die man falsch verstehen kann, werden buchstabiert. Kündige es mit „Ich buchstabiere“ an und nutze eine Buchstabiertafel: DIN 5009 (neu mit Städtenamen oder traditionell mit Vornamen) oder das NATO-Alphabet. Welche du in den Musterlösungen sehen willst, stellst du in den Einstellungen ein – erkannt werden alle drei.',
+            example: ex('QUAST:', 'DIN neu:  Quickborn, Unna, Aachen, Salzwedel, Tübingen', 'DIN alt:  Quelle, Ulrich, Anton, Samuel, Theodor', 'NATO:     Quebec, Uniform, Alfa, Sierra, Tango'),
           },
           { kind: 'rx', who: 'lst', text: `${own.full} von ${lst.full}, kommen.` },
           { kind: 'tx', strict: true, label: 'Anruf beantworten', expect: { type: 'answer', own, target: lst }, sample: `Hier ${own.full}, kommen.` },

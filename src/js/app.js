@@ -8,7 +8,7 @@ import { Engine } from './engine.js';
 import { SCENARIOS, TALKGROUPS, STATUS_TEXT, STATUS_SCENARIOS, buildScenario, buildShift, withoutStatus } from './scenarios.js';
 import { addTraffic } from './traffic.js';
 import { loadSettings, saveSettings, loadHistory, addHistory, clearHistory } from './storage.js';
-import { DIN_2022, DIN_TRAD } from './spelling.js';
+import { DIN_2022, DIN_TRAD, NATO } from './spelling.js';
 import { LESSONS, buildLesson } from './tutorial.js';
 
 const KEY_TUT = 'funktrainer.tutorial.v1';
@@ -656,7 +656,7 @@ function openRules() {
     .map(([k, v]) => `<tr><td><b>${k}</b></td><td>${v}</td></tr>`)
     .join('');
   const spellRows = Object.keys(DIN_2022)
-    .map((k) => `<tr><td><b>${k}</b></td><td>${DIN_2022[k]}</td><td>${DIN_TRAD[k] || ''}</td></tr>`)
+    .map((k) => `<tr><td><b>${k}</b></td><td>${DIN_2022[k]}</td><td>${DIN_TRAD[k] || ''}</td><td>${NATO[k] || ''}</td></tr>`)
     .join('');
   $('#rules-content').innerHTML = `
     <section>
@@ -704,8 +704,8 @@ function openRules() {
     </section>
     <section style="grid-column: 1 / -1">
       <h3>Buchstabiertafel</h3>
-      <table><tr><td></td><td class="muted">DIN 5009 (2022)</td><td class="muted">Traditionell</td></tr>${spellRows}
-      <tr><td><b>Ch</b></td><td>– (C, H)</td><td>Charlotte</td></tr><tr><td><b>Sch</b></td><td>– (S, C, H)</td><td>Schule</td></tr></table>
+      <table><tr><td></td><td class="muted">DIN 5009 (2022)</td><td class="muted">Traditionell</td><td class="muted">NATO</td></tr>${spellRows}
+      <tr><td><b>Ch</b></td><td>– (C, H)</td><td>Charlotte</td><td>– (C, H)</td></tr><tr><td><b>Sch</b></td><td>– (S, C, H)</td><td>Schule</td><td>– (S, C, H)</td></tr></table>
     </section>
     <p class="muted small" style="grid-column: 1 / -1">
       Dieses Merkblatt ersetzt keine Ausbildung nach der Sprechfunk-Dienstvorschrift (DV 810) bzw. den THW-Ausbildungsunterlagen.

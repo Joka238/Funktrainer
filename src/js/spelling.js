@@ -78,12 +78,21 @@ export function extractSpelling(tokens) {
     if (cur.letters.length > best.letters.length) best = cur;
     cur = { letters: '', tables: new Set(), words: [] };
   };
-  for (const tok of tokens) {
+  for (let i = 0; i < tokens.length; i++) {
+    const tok = tokens[i];
     if (tok.t === 'umlaut') {
       umlautNext = true;
       continue;
     }
-    const hit = tok.num === null ? lookupWord(tok.t) : null;
+    // Zusammengesetzte Wörter wie "X-Ray" (als "x ray" erkannt)
+    const next = tokens[i + 1];
+    let hit = null;
+    if (next && tok.num === null && next.num === null && LOOKUP.has(tok.t + next.t)) {
+      hit = LOOKUP.get(tok.t + next.t);
+      i++;
+    } else {
+      hit = tok.num === null ? lookupWord(tok.t) : null;
+    }
     if (hit) {
       let letters = hit.letters;
       if (umlautNext && UMLAUT[letters]) letters = UMLAUT[letters];
@@ -103,7 +112,7 @@ export function extractSpelling(tokens) {
 
 /** Buchstabierwörter für ein Wort nach gewählter Tafel (für Hilfetexte). */
 export function spellOut(word, table = 'din2022') {
-  const t = table === 'trad' ? DIN_TRAD : DIN_2022;
+  const t = table === 'trad' ? DIN_TRAD : table === 'nato' ? NATO : DIN_2022;
   const up = String(word).toUpperCase();
   const out = [];
   for (let i = 0; i < up.length; i++) {
@@ -119,6 +128,7 @@ export function spellOut(word, table = 'din2022') {
     }
     const c = up[i];
     if (t[c]) out.push(t[c]);
+    else if (table === 'nato' && 'ÄÖÜ'.includes(c)) out.push(`${NATO[{ Ä: 'A', Ö: 'O', Ü: 'U' }[c]]} Echo`);
   }
   return out.join(', ');
 }
