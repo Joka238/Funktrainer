@@ -88,12 +88,12 @@ export class Recognizer {
     }
   }
 
-  transcribe(samples) {
+  transcribe(samples, words = []) {
     if (this.state !== 'ready') return Promise.reject(new Error('Spracherkennung nicht bereit'));
     const id = this.nextId++;
     return new Promise((resolve, reject) => {
       this.pending.set(id, { resolve, reject });
-      this.worker.postMessage({ type: 'transcribe', id, audio: samples }, [samples.buffer]);
+      this.worker.postMessage({ type: 'transcribe', id, audio: samples, words }, [samples.buffer]);
     });
   }
 }

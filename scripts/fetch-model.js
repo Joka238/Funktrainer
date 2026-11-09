@@ -8,14 +8,14 @@ const model = process.argv[2] || 'Xenova/whisper-base';
 const base = `https://huggingface.co/${model}/resolve/main/`;
 const out = path.join(__dirname, '..', 'src', 'models', ...model.split('/'));
 
-// Dateien, die transformers.js für die Spracherkennung (dtype q8) braucht
+// Dateien für die Spracherkennung: Encoder unkomprimiert (Genauigkeit), Decoder komprimiert (q8)
 const REQUIRED = [
   'config.json',
   'generation_config.json',
   'preprocessor_config.json',
   'tokenizer.json',
   'tokenizer_config.json',
-  'onnx/encoder_model_quantized.onnx',
+  'onnx/encoder_model.onnx',
   'onnx/decoder_model_merged_quantized.onnx',
 ];
 const OPTIONAL = ['special_tokens_map.json', 'added_tokens.json', 'normalizer.json', 'vocab.json', 'merges.txt', 'processor_config.json'];

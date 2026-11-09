@@ -19,8 +19,9 @@ export class MicRecorder {
     this.stream = await navigator.mediaDevices.getUserMedia({
       audio: {
         deviceId: deviceId ? { exact: deviceId } : undefined,
-        echoCancellation: true,
-        noiseSuppression: true,
+        // Browser-Rauschunterdrückung verschluckt Silben – Whisper kommt mit Rauschen besser zurecht
+        echoCancellation: false,
+        noiseSuppression: false,
         autoGainControl: true,
         channelCount: 1,
       },
@@ -79,7 +80,7 @@ export class MicRecorder {
     }
     const rate = this.ctx.sampleRate;
     const analysis = analyse(pcm, rate, { mode: this.mode || "digital" });
-    const samples = await resample(pcm, rate, TARGET_RATE);
+    const samples = prepareForAsr(await resample(pcm, rate, TARGET_RATE));
     return { samples, durationSec: pcm.length / rate, ...analysis };
   }
 
@@ -89,6 +90,17 @@ export class MicRecorder {
     this.stream = null;
     this.ctx = null;
   }
+}
+
+/** Pegel angleichen und kurze Stille vorn/hinten anfügen (verbessert die Erkennung). */
+export function prepareForAsr(x) {
+  let peak = 0;
+  for (let i = 0; i < x.length; i++) peak = Math.max(peak, Math.abs(x[i]));
+  const gain = peak > 0.001 && peak < 0.5 ? Math.min(8, 0.7 / peak) : 1;
+  const pad = Math.round(TARGET_RATE * 0.3);
+  const out = new Float32Array(x.length + 2 * pad);
+  for (let i = 0; i < x.length; i++) out[pad + i] = Math.max(-1, Math.min(1, x[i] * gain));
+  return out;
 }
 
 async function resample(pcm, from, to) {

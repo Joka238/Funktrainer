@@ -290,7 +290,7 @@ radio.on('ptt-up', async () => {
   renderSttStatus();
   let text = '';
   try {
-    text = await recognizer.transcribe(rec.samples);
+    text = await recognizer.transcribe(rec.samples, vocabulary());
   } catch (e) {
     toast(`Spracherkennung fehlgeschlagen: ${e.message}`);
     sttBusy = false;
@@ -301,6 +301,16 @@ radio.on('ptt-up', async () => {
   renderSttStatus();
   submitTransmission(text, rec.durationSec, rec.issues);
 });
+
+/** Wortschatz der laufenden Übung (Orte, Straßen, Rufnamen) für die Spracherkennung. */
+function vocabulary() {
+  if (!scenario) return [];
+  const c = scenario.ctx;
+  const words = [c.ort, c.street, c.own && c.own.full, c.ztr && c.ztr.full, c.lst && c.lst.full];
+  const brief = `${scenario.briefing || ''} ${$('#task').textContent || ''}`;
+  for (const m of brief.matchAll(/„([^“]+)“/g)) words.push(m[1]);
+  return words;
+}
 
 function submitTransmission(text, durationSec, issues = []) {
   addLog('out', text || '(nicht verständlich)', { tg: radio.tg });

@@ -39,7 +39,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: src/models
-          key: whisper-base-v1
+          key: whisper-base-v2
       - name: Sprachmodell in die App einbauen
         run: node scripts/fetch-model.js Xenova/whisper-base
       - name: App bauen
