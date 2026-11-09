@@ -39,9 +39,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: src/models
-          key: whisper-base-v2
+          key: whisper-small-v1
       - name: Sprachmodell in die App einbauen
-        run: node scripts/fetch-model.js Xenova/whisper-base
+        run: node scripts/fetch-model.js Xenova/whisper-small
       - name: App bauen
         run: npx electron-builder --publish never
         env:

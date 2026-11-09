@@ -71,8 +71,25 @@ async function load(model, device) {
   postMessage({ type: 'ready', model, device: usedDevice, bundled });
 }
 
+/** Notbremse gegen Whisper-Wiederholungsschleifen ("Lindenberg, Lindenberg, ..."). */
+function collapseRepeats(text) {
+  const words = text.split(/\s+/);
+  const out = [];
+  let run = 0;
+  for (const w of words) {
+    const k = w.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+    const prev = out.length ? out[out.length - 1].toLowerCase().replace(/[^\p{L}\p{N}]/gu, '') : null;
+    run = k && k === prev ? run + 1 : 0;
+    if (run < 2) out.push(w);
+  }
+  return out.join(' ');
+}
+
 async function transcribe(id, audio, words) {
-  let text = await asr.transcribe(audio, { prompt: buildPrompt(words || []) });
+  // Wortschatz-Prompt nur für große Modelle – kleine Modelle geraten dadurch in Wiederholungsschleifen (gemessen)
+  const usePrompt = /large|turbo/.test(loadedKey || '');
+  let text = await asr.transcribe(audio, { prompt: usePrompt ? buildPrompt(words || []) : null });
+  text = collapseRepeats(text);
   if (HALLUCINATIONS.some((re) => re.test(text))) text = '';
   postMessage({ type: 'result', id, text });
 }

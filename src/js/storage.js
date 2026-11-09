@@ -7,7 +7,7 @@ export const DEFAULT_SETTINGS = {
   showText: false,
   voice: '',
   rate: 1,
-  model: 'Xenova/whisper-base',
+  model: 'Xenova/whisper-small',
   device: 'wasm',
   mic: '',
   spellTable: 'din2022',
@@ -35,7 +35,14 @@ function write(key, value) {
 }
 
 export function loadSettings() {
-  return { ...DEFAULT_SETTINGS, ...read(KEY_SETTINGS, {}) };
+  const s = { ...DEFAULT_SETTINGS, ...read(KEY_SETTINGS, {}) };
+  // Einmalige Umstellung: das alte Standardmodell "Base" erkennt deutlich schlechter als "Small"
+  if (!s.modelV2) {
+    if (s.model === 'Xenova/whisper-base' || s.model === 'Xenova/whisper-tiny') s.model = DEFAULT_SETTINGS.model;
+    s.modelV2 = true;
+    saveSettings(s);
+  }
+  return s;
 }
 
 export function saveSettings(s) {

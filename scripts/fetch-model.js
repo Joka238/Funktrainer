@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const model = process.argv[2] || 'Xenova/whisper-base';
+const model = process.argv[2] || 'Xenova/whisper-small';
 const base = `https://huggingface.co/${model}/resolve/main/`;
 const out = path.join(__dirname, '..', 'src', 'models', ...model.split('/'));
 

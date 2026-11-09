@@ -28,14 +28,12 @@ const SENTENCES = [
 ];
 
 const CONFIGS = {
-  'base-q8': { model: 'Xenova/whisper-base', dtype: 'q8', prompt: false },
-  'base-q8-prompt': { model: 'Xenova/whisper-base', dtype: 'q8', prompt: true },
-  'base-fp32enc-prompt': { model: 'Xenova/whisper-base', dtype: { encoder_model: 'fp32', decoder_model_merged: 'q8' }, prompt: true },
-  'small-q8-prompt': { model: 'Xenova/whisper-small', dtype: 'q8', prompt: true },
-  'small-fp32enc-prompt': { model: 'Xenova/whisper-small', dtype: { encoder_model: 'fp32', decoder_model_merged: 'q8' }, prompt: true },
   'small-fp32enc': { model: 'Xenova/whisper-small', dtype: { encoder_model: 'fp32', decoder_model_merged: 'q8' }, prompt: false },
+  'small-fp32enc-q4dec': { model: 'Xenova/whisper-small', dtype: { encoder_model: 'fp32', decoder_model_merged: 'q4' }, prompt: false },
+  'small-q8': { model: 'Xenova/whisper-small', dtype: 'q8', prompt: false },
+  'base-fp32enc': { model: 'Xenova/whisper-base', dtype: { encoder_model: 'fp32', decoder_model_merged: 'q8' }, prompt: false },
+  'turbo-q8': { model: 'onnx-community/whisper-large-v3-turbo', dtype: { encoder_model: 'q8', decoder_model_merged: 'q8' }, prompt: false },
   'turbo-q8-prompt': { model: 'onnx-community/whisper-large-v3-turbo', dtype: { encoder_model: 'q8', decoder_model_merged: 'q8' }, prompt: true },
-  'turbo-q4-prompt': { model: 'onnx-community/whisper-large-v3-turbo', dtype: { encoder_model: 'q4', decoder_model_merged: 'q4' }, prompt: true },
 };
 
 function readWavF32(file) {

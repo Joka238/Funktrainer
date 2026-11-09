@@ -1,8 +1,8 @@
 // Wrapper um den Spracherkennungs-Worker.
 export const MODELS = {
-  'Xenova/whisper-tiny': 'Whisper Tiny – sehr schnell, ungenau (Download ~40 MB)',
-  'Xenova/whisper-base': 'Whisper Base – schnell, solide (in der App enthalten)',
-  'Xenova/whisper-small': 'Whisper Small – genau, langsamer (Download ~250 MB)',
+  'Xenova/whisper-small': 'Whisper Small – genau (empfohlen, in der App enthalten)',
+  'onnx-community/whisper-large-v3-turbo': 'Whisper Large-v3-Turbo – beste Erkennung, langsamer (Download ~1 GB)',
+  'Xenova/whisper-base': 'Whisper Base – schnell, aber ungenau (Download ~130 MB)',
 };
 
 export class Recognizer {
