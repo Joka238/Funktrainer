@@ -1,0 +1,30 @@
+name: Spracherkennung in der App testen
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/e2e-stt.mjs'
+      - '.github/workflows/e2e-stt.yml'
+      - 'src/js/mic.js'
+      - 'src/js/stt*.js'
+      - 'src/js/asr-core.js'
+
+jobs:
+  e2e:
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm install --no-save playwright@1.55.1
+      - uses: actions/cache@v4
+        with:
+          path: src/models
+          key: whisper-small-v1
+      - run: node scripts/fetch-model.js Xenova/whisper-small
+      - run: node scripts/e2e-stt.mjs
