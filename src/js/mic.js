@@ -3,7 +3,12 @@
 const TARGET_RATE = 16000;
 
 export class MicRecorder {
-  constructor() {
+  /**
+   * capture: 'mediarecorder' (Standard, robust – nimmt im Browser-Audioprozess auf)
+   *          'scriptprocessor' (alt – lief im UI-Thread und konnte Tonstücke verlieren)
+   */
+  constructor(capture = 'mediarecorder') {
+    this.capture = capture;
     this.ctx = null;
     this.stream = null;
     this.recording = false;
@@ -28,23 +33,21 @@ export class MicRecorder {
     });
     this.ctx = new (window.AudioContext || window.webkitAudioContext)();
     const src = this.ctx.createMediaStreamSource(this.stream);
-    // ScriptProcessor: einfach und überall verfügbar
-    const proc = this.ctx.createScriptProcessor(2048, 1, 1);
-    const mute = this.ctx.createGain();
-    mute.gain.value = 0;
-    proc.onaudioprocess = (e) => {
-      if (!this.recording) return;
-      const data = e.inputBuffer.getChannelData(0);
-      this.chunks.push(new Float32Array(data));
-      if (this.onLevel) {
-        let sum = 0;
-        for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
-        this.onLevel(Math.min(1, Math.sqrt(sum / data.length) * 6));
-      }
-    };
-    src.connect(proc);
-    proc.connect(mute).connect(this.ctx.destination);
-    this.proc = proc;
+    // Pegelanzeige über einen Analyser (keine Audioverarbeitung im UI-Thread)
+    this.analyser = this.ctx.createAnalyser();
+    this.analyser.fftSize = 1024;
+    src.connect(this.analyser);
+    if (this.capture === 'scriptprocessor') {
+      const proc = this.ctx.createScriptProcessor(4096, 1, 1);
+      const mute = this.ctx.createGain();
+      mute.gain.value = 0;
+      proc.onaudioprocess = (e) => {
+        if (this.recording) this.chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+      };
+      src.connect(proc);
+      proc.connect(mute).connect(this.ctx.destination);
+      this.proc = proc;
+    }
   }
 
   static async listDevices() {
@@ -56,35 +59,75 @@ export class MicRecorder {
     }
   }
 
+  startLevel() {
+    const buf = new Float32Array(this.analyser.fftSize);
+    this.levelTimer = setInterval(() => {
+      if (!this.onLevel) return;
+      this.analyser.getFloatTimeDomainData(buf);
+      let sum = 0;
+      for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+      this.onLevel(Math.min(1, Math.sqrt(sum / buf.length) * 6));
+    }, 60);
+  }
+
   async start() {
     await this.init();
     if (this.ctx.state === 'suspended') await this.ctx.resume();
     this.chunks = [];
     this.t0 = performance.now();
     this.recording = true;
+    if (this.capture !== 'scriptprocessor') {
+      const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
+      const mimeType = types.find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t));
+      this.recorder = new MediaRecorder(this.stream, { ...(mimeType ? { mimeType } : {}), audioBitsPerSecond: 128000 });
+      this.recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size) this.chunks.push(e.data);
+      };
+      this.recorder.start();
+    }
+    this.startLevel();
   }
 
   /** Beendet die Aufnahme. Liefert { samples (16 kHz), durationSec, issues, hasSpeech }. */
   async stop() {
     if (!this.recording) return null;
-    // kurzer Nachlauf, damit das letzte Puffer-Stück noch ankommt
-    await new Promise((r) => setTimeout(r, 60));
+    // kurzer Nachlauf, damit das Ende der letzten Silbe nicht abgeschnitten wird
+    await new Promise((r) => setTimeout(r, 120));
     this.recording = false;
+    clearInterval(this.levelTimer);
     if (this.onLevel) this.onLevel(0);
-    const total = this.chunks.reduce((a, c) => a + c.length, 0);
-    const pcm = new Float32Array(total);
-    let off = 0;
-    for (const c of this.chunks) {
-      pcm.set(c, off);
-      off += c.length;
+
+    let pcm;
+    let rate;
+    if (this.capture === 'scriptprocessor') {
+      const total = this.chunks.reduce((a, c) => a + c.length, 0);
+      pcm = new Float32Array(total);
+      let off = 0;
+      for (const c of this.chunks) {
+        pcm.set(c, off);
+        off += c.length;
+      }
+      rate = this.ctx.sampleRate;
+    } else {
+      const rec = this.recorder;
+      await new Promise((resolve) => {
+        rec.onstop = resolve;
+        rec.stop();
+      });
+      const blob = new Blob(this.chunks, { type: rec.mimeType || 'audio/webm' });
+      const buf = await blob.arrayBuffer();
+      if (!buf.byteLength) return { samples: new Float32Array(0), durationSec: 0, hasSpeech: false, issues: [] };
+      const audio = await this.ctx.decodeAudioData(buf);
+      pcm = audio.getChannelData(0).slice();
+      rate = audio.sampleRate;
     }
-    const rate = this.ctx.sampleRate;
-    const analysis = analyse(pcm, rate, { mode: this.mode || "digital" });
+    const analysis = analyse(pcm, rate, { mode: this.mode || 'digital' });
     const samples = prepareForAsr(await resample(pcm, rate, TARGET_RATE));
-    return { samples, durationSec: pcm.length / rate, ...analysis };
+    return { samples, durationSec: pcm.length / rate, rate, ...analysis };
   }
 
   close() {
+    clearInterval(this.levelTimer);
     if (this.stream) this.stream.getTracks().forEach((t) => t.stop());
     if (this.ctx) this.ctx.close();
     this.stream = null;

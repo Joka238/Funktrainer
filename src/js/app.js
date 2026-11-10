@@ -938,4 +938,4 @@ voice.ready.then(() => {
 });
 
 // für Tests/Debugging
-window.__funktrainer = { engine, radio, recognizer, voice, settings, startScenario, submitTransmission };
+window.__funktrainer = { engine, radio, recognizer, voice, settings, startScenario, submitTransmission, mic, MicRecorder };

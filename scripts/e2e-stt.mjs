@@ -65,7 +65,31 @@ for (let i = 0; i < SENT.length; i++) {
   }, fs.readFileSync(wav).toString('base64'));
   console.log(`  direkt:   ${JSON.stringify(direct)}`);
 
-  // 1) über Mikrofon + Sprechtaste
+  // 1a) beide Aufnahmewege direkt vergleichen
+  const methods = {};
+  for (const method of ['scriptprocessor', 'mediarecorder']) {
+    methods[method] = await w.evaluate(async ([method, ms]) => {
+      const { MicRecorder, recognizer } = window.__funktrainer;
+      const m = new MicRecorder(method);
+      try {
+        await m.start();
+        await new Promise((r) => setTimeout(r, ms));
+        const rec = await m.stop();
+        m.close();
+        let peak = 0;
+        for (const v of rec.samples) peak = Math.max(peak, Math.abs(v));
+        const stats = { dur: rec.durationSec.toFixed(2), rate: rec.rate, peak: peak.toFixed(3), hasSpeech: rec.hasSpeech };
+        const text = rec.samples.length ? await recognizer.transcribe(rec.samples, []) : '';
+        return { stats, text };
+      } catch (e) {
+        return { error: String(e) };
+      }
+    }, [method, durMs + 300]);
+    console.log(`  ${method}: ${JSON.stringify(methods[method])}`);
+  }
+
+  // 1b) über Mikrofon + Sprechtaste (kompletter App-Weg)
+  await w.evaluate(() => window.__funktrainer.mic.close());
   await w.evaluate(() => window.__funktrainer.radio.setPower(true));
   await w.waitForTimeout(2000);
   const before = await w.$$eval('.msg.out', (e) => e.length);
@@ -86,9 +110,13 @@ for (let i = 0; i < SENT.length; i++) {
   console.log(`  mikrofon: ${mic}`);
   const errs = logs.filter((l) => /error|warn|STT/i.test(l)).slice(0, 8);
   if (errs.length) console.log('  console:\n    ' + errs.join('\n    '));
-  results.push({ sentence: SENT[i], direct, mic });
+  results.push({ sentence: SENT[i], direct, mic, sp: methods.scriptprocessor.text ?? methods.scriptprocessor.error, mr: methods.mediarecorder.text ?? methods.mediarecorder.error });
   await app.close();
 }
-const md = ['| Satz | direkt | über Mikrofon |', '|---|---|---|', ...results.map((r) => `| ${r.sentence} | ${r.direct.text ?? r.direct.error} | ${r.mic} |`)].join('\n');
+const md = [
+  '| Satz | direkt | ScriptProcessor | MediaRecorder | App (PTT) |',
+  '|---|---|---|---|---|',
+  ...results.map((r) => `| ${r.sentence} | ${r.direct.text ?? r.direct.error} | ${r.sp} | ${r.mr} | ${r.mic} |`),
+].join('\n');
 console.log('\n' + md);
 if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md + '\n');
