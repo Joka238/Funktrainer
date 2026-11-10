@@ -17,6 +17,7 @@ const SENT = [
 const voice = execFileSync('say', ['-v', '?']).toString().split('\n').find((l) => /\sde_DE\s/.test(l)).split(/\s{2,}/)[0];
 
 const results = [];
+let timing = null;
 for (let i = 0; i < SENT.length; i++) {
   const wav = path.join(dir, `s${i}.wav`);
   // vorne/hinten Stille, damit Sprechtaste "rechtzeitig" gedrückt ist
@@ -64,6 +65,35 @@ for (let i = 0; i < SENT.length; i++) {
     }
   }, fs.readFileSync(wav).toString('base64'));
   console.log(`  direkt:   ${JSON.stringify(direct)}`);
+
+  // Zeitvergleich: zweite Erkennung (warm) mit automatischer Wahl vs. nur Prozessor
+  const timeIt = () =>
+    w.evaluate(async () => {
+      const { recognizer } = window.__funktrainer;
+      const audio = new Float32Array(16000 * 4);
+      for (let k = 0; k < audio.length; k++) audio[k] = Math.sin(k / 8) * 0.1 * Math.sin(k / 4000);
+      const t0 = performance.now();
+      await recognizer.transcribe(audio, []);
+      return { device: recognizer.device, sec: ((performance.now() - t0) / 1000).toFixed(2) };
+    });
+  if (i === 0) {
+    const auto = await timeIt();
+    await w.evaluate(() => window.__funktrainer.recognizer.load('Xenova/whisper-small', 'wasm'));
+    for (let k = 0; k < 300; k++) {
+      const s2 = await w.evaluate(() => window.__funktrainer.recognizer.state);
+      if (s2 === 'ready') break;
+      await w.waitForTimeout(1000);
+    }
+    const cpu = await timeIt();
+    console.log(`  Zeit pro Sendung – automatisch: ${JSON.stringify(auto)}, nur Prozessor: ${JSON.stringify(cpu)}`);
+    timing = { auto, cpu };
+    await w.evaluate(() => window.__funktrainer.recognizer.load('Xenova/whisper-small', 'auto'));
+    for (let k = 0; k < 300; k++) {
+      const s2 = await w.evaluate(() => window.__funktrainer.recognizer.state);
+      if (s2 === 'ready') break;
+      await w.waitForTimeout(1000);
+    }
+  }
 
   // 1a) beide Aufnahmewege direkt vergleichen
   const methods = {};
@@ -119,4 +149,5 @@ const md = [
   ...results.map((r) => `| ${r.sentence} | ${r.direct.text ?? r.direct.error} | ${r.sp} | ${r.mr} | ${r.mic} |`),
 ].join('\n');
 console.log('\n' + md);
+console.log('\nZeitmessung: ' + JSON.stringify(timing));
 if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md + '\n');

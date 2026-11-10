@@ -59,7 +59,8 @@ export class Recognizer {
         break;
       case 'ready':
         this.state = 'ready';
-        this.onStatus({ state: 'ready', device: msg.device, model: msg.model, bundled: msg.bundled });
+        this.device = msg.device;
+        this.onStatus({ state: 'ready', device: msg.device, model: msg.model, bundled: msg.bundled, warmMs: msg.warmMs });
         break;
       case 'result': {
         const p = this.pending.get(msg.id);

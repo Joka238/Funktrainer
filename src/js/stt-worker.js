@@ -13,7 +13,7 @@ env.backends.onnx.wasm.wasmPaths = {
   wasm: VENDOR + 'ort-wasm-simd-threaded.asyncify.wasm',
 };
 env.backends.onnx.wasm.numThreads = self.crossOriginIsolated
-  ? Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1))
+  ? Math.max(1, Math.min(8, (navigator.hardwareConcurrency || 2) - 1))
   : 1;
 
 let asr = null;
@@ -32,10 +32,27 @@ const HALLUCINATIONS = [
 ];
 
 /** dtype je Modell: Encoder unkomprimiert (wichtig für die Genauigkeit), Decoder komprimiert. */
-function dtypeFor(model, device) {
-  if (device === 'webgpu') return { encoder_model: 'fp32', decoder_model_merged: 'q4' };
-  if (/large|turbo/.test(model)) return { encoder_model: 'q8', decoder_model_merged: 'q8' };
+function dtypeFor(model, gpuEncoder = false) {
+  if (/large|turbo/.test(model)) {
+    // Turbo: auf der GPU Encoder in fp16 (halber Speicher), sonst q8
+    return { encoder_model: gpuEncoder ? 'fp16' : 'q8', decoder_model_merged: 'q8' };
+  }
   return { encoder_model: 'fp32', decoder_model_merged: 'q8' };
+}
+
+async function gpuAvailable() {
+  try {
+    return !!('gpu' in navigator && (await navigator.gpu.requestAdapter()));
+  } catch {
+    return false;
+  }
+}
+
+/** Probelauf mit Stille: lädt/kompiliert alles vor, damit die erste echte Sendung schnell ist. */
+async function warmUp(a) {
+  const t0 = performance.now();
+  await a.transcribe(new Float32Array(16000), {});
+  return performance.now() - t0;
 }
 
 async function load(model, device) {
@@ -55,20 +72,29 @@ async function load(model, device) {
   const progress_callback = (p) => postMessage({ type: 'progress', data: p });
   let usedDevice = 'wasm';
   asr = null;
-  if (device === 'webgpu' && 'gpu' in navigator) {
+  let warm = 0;
+  // Automatisch: rechenintensiven Encoder auf dem Grafikchip, Decoder (q8) auf der CPU –
+  // gleiche Genauigkeit, deutlich schneller.
+  if ((device === 'auto' || device === 'webgpu') && (await gpuAvailable())) {
     try {
-      asr = await createAsr(T, model, { device: 'webgpu', dtype: dtypeFor(model, 'webgpu'), progress_callback });
-      usedDevice = 'webgpu';
+      asr = await createAsr(T, model, {
+        device: { encoder_model: 'webgpu', decoder_model_merged: 'wasm' },
+        dtype: dtypeFor(model, true),
+        progress_callback,
+      });
+      warm = await warmUp(asr);
+      usedDevice = 'gpu+cpu';
     } catch (e) {
-      postMessage({ type: 'log', message: 'WebGPU nicht nutzbar, verwende CPU: ' + e.message });
+      postMessage({ type: 'log', message: 'Grafikchip nicht nutzbar, verwende CPU: ' + e.message });
       asr = null;
     }
   }
   if (!asr) {
-    asr = await createAsr(T, model, { device: 'wasm', dtype: dtypeFor(model, 'wasm'), progress_callback });
+    asr = await createAsr(T, model, { device: 'wasm', dtype: dtypeFor(model, false), progress_callback });
+    warm = await warmUp(asr);
   }
   loadedKey = key;
-  postMessage({ type: 'ready', model, device: usedDevice, bundled });
+  postMessage({ type: 'ready', model, device: usedDevice, bundled, warmMs: Math.round(warm) });
 }
 
 /** Notbremse gegen Whisper-Wiederholungsschleifen ("Lindenberg, Lindenberg, ..."). */

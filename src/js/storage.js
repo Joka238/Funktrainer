@@ -8,7 +8,7 @@ export const DEFAULT_SETTINGS = {
   voice: '',
   rate: 1,
   model: 'Xenova/whisper-small',
-  device: 'wasm',
+  device: 'auto',
   mic: '',
   spellTable: 'din2022',
   answerTimeout: 15,
@@ -40,6 +40,12 @@ export function loadSettings() {
   if (!s.modelV2) {
     if (s.model === 'Xenova/whisper-base' || s.model === 'Xenova/whisper-tiny') s.model = DEFAULT_SETTINGS.model;
     s.modelV2 = true;
+    saveSettings(s);
+  }
+  // Einmalige Umstellung auf automatische GPU-Nutzung (deutlich schneller)
+  if (!s.deviceV2) {
+    s.device = 'auto';
+    s.deviceV2 = true;
     saveSettings(s);
   }
   return s;

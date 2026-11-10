@@ -495,7 +495,7 @@ function renderSttStatus(st) {
       break;
     }
     case 'ready':
-      el.textContent = `🎙 Spracherkennung bereit – offline (${(s.model || '').split('/').pop()}, ${s.device === 'webgpu' ? 'GPU' : 'CPU'})`;
+      el.textContent = `🎙 Spracherkennung bereit – offline (${(s.model || '').split('/').pop()}, ${s.device === 'gpu+cpu' ? 'Grafikchip' : 'Prozessor'})`;
       break;
     case 'error': {
       const net = /fetch|network|load/i.test(s.message || '');
