@@ -84,6 +84,15 @@ In der App unter **Einstellungen → Nach Updates suchen**: Die neue Version wir
 
 Rufnamen, Orte, Adressen und Lagen werden bei jedem Durchlauf zufällig erzeugt. So lernst du keine festen Antworten auswendig.
 
+### Freier Modus
+
+Im freien Modus gibt es keinen vorgegebenen Gesprächsablauf. Du bekommst nur eine Anweisung, z. B. „Euch geht der Kraftstoff aus, ihr braucht 40 Liter Diesel“, und eine **Übersicht der Funkteilnehmer** mit Rufname, Zuständigkeit und Gesprächsgruppe (Zugtrupp, Nachbargruppe, Fachgruppen Notversorgung und Logistik, Einsatzleitung Feuerwehr, Rettungswagen, Leitstelle). Wen du rufst und wie du die Nachricht formulierst, entscheidest du selbst.
+
+- **30 Aufgabentypen** mit zufälligen Werten in vier Arten (einzeln abwählbar): *Mitteilen*, *Anfordern*, *Erfragen* und *Angerufen werden*. Pro Durchlauf 3 bis 12 zufällige Aufgaben im selben Einsatz.
+- **Die Gegenstellen reagieren auf das, was du sendest:** Rufst du eine nicht zuständige Stelle, verweist sie dich weiter. Fehlen Angaben (Menge, Ort …), kommt eine Rückfrage („Welche Menge, kommen.“). Fehlt dein Rufname, fragt sie „Wer ruft?“. Anruf und Nachricht in einer Sendung werden erkannt. Ab und zu heißt es auch „warten“.
+- Die **Leitstelle** ist nur auf ihrer eigenen Gesprächsgruppe erreichbar – vorher umschalten.
+- Fremdverkehr und Statusmeldungen laufen wie in den anderen Übungen mit.
+
 ### Was wird bewertet?
 
 - Gesprächsaufbau: „[Gerufene Stelle] **von** [eigener Rufname], **kommen**“ bzw. „**Hier** [eigener Rufname], **kommen**“
@@ -167,5 +176,6 @@ Tipp: Nach dem Drücken der Sprechtaste kurz den Ton abwarten, deutlich sprechen
 - Sprachausgabe: Web Speech API (Systemstimmen)
 - Funkgeräte-Klänge: Web Audio API (synthetisch erzeugt)
 - Bewertungslogik: `src/js/evaluator.js`, Szenarien: `src/js/scenarios.js`, Ablauf: `src/js/engine.js`
+- Freier Modus: Aufgaben und Funkteilnehmer in `src/js/free.js`, dialogbasierter Ablauf in `src/js/free-engine.js`
 
 Eigene Übungen lassen sich in `src/js/scenarios.js` ergänzen. Ein Szenario ist eine Folge von Schritten (`rx` = Gegenstelle spricht, `tx` = du sendest mit Erwartung, `status`, `task`, `silence` …). Die Tests in `tests/engine.test.mjs` prüfen automatisch, dass jede Musterlösung volle Punktzahl erreicht.

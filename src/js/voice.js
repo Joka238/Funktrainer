@@ -22,7 +22,7 @@ const PROFILES = [
   { pitch: 1.05, rate: 0.92 },
   { pitch: 0.8, rate: 1.1 },
 ];
-const SPEAKERS = ['ztr', 'lst', 'sib', 'fgr', 'o1', 'o2', 'f1', 'f2', 'r1'];
+const SPEAKERS = ['ztr', 'lst', 'sib', 'fgr', 'o1', 'o2', 'f1', 'f2', 'r1', 'log', 'elfw', 'rtw'];
 
 export class Voice {
   constructor(audio) {

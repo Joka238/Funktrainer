@@ -52,6 +52,26 @@
           <h2>Tutorial <small class="muted" id="tut-progress"></small></h2>
           <div id="tutorial-list" class="scenario-list"></div>
         </div>
+        <div class="panel free-panel">
+          <h2>Freier Modus <span class="badge free">Neu</span></h2>
+          <p class="small muted">
+            Realitätsnah: Du bekommst nur eine Anweisung – etwas mitteilen, anfordern oder erfragen – und eine Übersicht
+            der Funkteilnehmer. Wen du rufst und wie du es sagst, entscheidest du selbst. Die Gegenstellen reagieren darauf.
+          </p>
+          <div class="free-kinds" id="free-kinds"></div>
+          <div class="free-row">
+            <label class="small">Aufgaben
+              <select id="free-count">
+                <option value="3">3</option>
+                <option value="5">5</option>
+                <option value="8">8</option>
+                <option value="12">12</option>
+              </select>
+            </label>
+            <button class="btn" id="free-start">Freien Einsatz starten ▶</button>
+          </div>
+          <div class="small muted" id="free-best"></div>
+        </div>
         <div class="panel">
           <h2>Übungen</h2>
           <div id="scenario-list" class="scenario-list"></div>
@@ -69,7 +89,7 @@
             <div class="briefing" id="briefing"></div>
             <div class="task" id="task" hidden></div>
             <details class="stations" open>
-              <summary>Funkrufnamen</summary>
+              <summary id="stations-title">Funkrufnamen</summary>
               <ul id="stations"></ul>
             </details>
           </div>
