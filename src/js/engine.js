@@ -2,6 +2,7 @@
 import { evaluate, PENALTY } from './evaluator.js';
 import { STATUS_TEXT } from './scenarios.js';
 import { spellOut } from './spelling.js';
+import { runFree } from './free-engine.js';
 
 class Aborted extends Error {}
 
@@ -237,6 +238,9 @@ export class Engine {
           break;
         case 'silence':
           await this.doSilence(step, token);
+          break;
+        case 'free':
+          await runFree(this, step, token);
           break;
         case 'tx': {
           const skip = await this.doTx(step, i, token);

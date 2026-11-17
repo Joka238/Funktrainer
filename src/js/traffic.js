@@ -139,6 +139,7 @@ export function conversation(ctx, st, tg, rnd) {
 
 /** Beginnt mit diesem Schritt ein neues Gespräch? (Dort passt Fremdverkehr hin.) */
 function startsConversation(step, own) {
+  if (step.kind === 'free') return true;
   if (step.kind === 'tx' && step.expect && step.expect.type === 'call') return true;
   if (step.kind === 'rx' && !step.chatter && step.text.startsWith(own.full)) return true;
   if (step.kind === 'section') return false;

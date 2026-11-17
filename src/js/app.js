@@ -10,6 +10,7 @@ import { addTraffic } from './traffic.js';
 import { loadSettings, saveSettings, loadHistory, addHistory, clearHistory } from './storage.js';
 import { DIN_2022, DIN_TRAD, NATO } from './spelling.js';
 import { LESSONS, buildLesson } from './tutorial.js';
+import { buildFree, FREE_KINDS } from './free.js';
 
 const KEY_TUT = 'funktrainer.tutorial.v1';
 function loadTutorialDone() {
@@ -53,6 +54,7 @@ radio.render();
 
 let scenario = null;
 let currentId = null;
+let currentTg = null; // aktuell geforderte Gesprächsgruppe
 let currentSample = '';
 let sttBusy = false;
 
@@ -118,9 +120,8 @@ const handlers = {
     $('#lage').hidden = false;
     $('#own-callsign').textContent = sc.ctx.own.full;
     $('#own-unit').textContent = sc.ctx.unit;
-    $('#stations').innerHTML = Object.values(sc.stations)
-      .map((s) => `<li>${esc(s.name)}</li>`)
-      .join('');
+    renderStations(sc);
+    if (sc.free) $('#panel-lage').scrollIntoView({ block: 'start', behavior: 'smooth' });
     $('#task').hidden = true;
     $('#eval').hidden = true;
     $('#eval-empty').hidden = false;
@@ -134,8 +135,13 @@ const handlers = {
   briefing({ text, tg, title }) {
     $('#briefing').textContent = text;
     scenario.tg = tg;
+    currentTg = tg;
     updateTgReq();
     if (title) addLog('note', `— ${title} —`);
+  },
+  tg({ tg }) {
+    currentTg = tg;
+    updateTgReq();
   },
   step({ index, total }) {
     $('#cur-progress').style.width = `${Math.round((index / total) * 100)}%`;
@@ -308,6 +314,7 @@ function vocabulary() {
   if (!scenario) return [];
   const c = scenario.ctx;
   const words = [c.ort, c.street, c.own && c.own.full, c.ztr && c.ztr.full, c.lst && c.lst.full];
+  if (scenario.roster) for (const r of Object.values(scenario.roster)) words.push(r.cs.full);
   const brief = `${scenario.briefing || ''} ${$('#task').textContent || ''}`;
   for (const m of brief.matchAll(/„([^“]+)“/g)) words.push(m[1]);
   return words;
@@ -406,11 +413,32 @@ function setRunning(on) {
 function updateTgReq() {
   const el = $('#tg-req');
   if (!scenario) return;
-  const ok = radio.usable && radio.tg === scenario.tg;
+  const tg = currentTg || scenario.tg;
+  const ok = radio.usable && radio.tg === tg;
   el.className = 'tg-req ' + (ok ? 'ok' : 'bad');
-  el.innerHTML = `Gesprächsgruppe: <b>${esc(scenario.tg)}</b> ${
+  const what = scenario.free ? (tg === scenario.tg ? 'Hörbereitschaft' : 'Gespräch auf') : 'Gesprächsgruppe';
+  el.innerHTML = `${what}: <b>${esc(tg)}</b> ${
     ok ? '✓' : radio.power ? `– am Gerät eingestellt: ${esc(radio.tg)}` : '– Funkgerät ist aus'
   }`;
+}
+
+/** Übersicht der Funkteilnehmer (im freien Modus mit Zuständigkeiten und Gesprächsgruppe). */
+function renderStations(sc) {
+  $('#stations-title').textContent = sc.roster ? 'Funkteilnehmer im Funkkreis' : 'Funkrufnamen';
+  const ul = $('#stations');
+  ul.classList.toggle('roster', !!sc.roster);
+  if (!sc.roster) {
+    ul.innerHTML = Object.values(sc.stations)
+      .map((s) => `<li>${esc(s.name)}</li>`)
+      .join('');
+    return;
+  }
+  ul.innerHTML = Object.values(sc.roster)
+    .map(
+      (r) => `<li><div><span class="r-cs">${esc(r.cs.full)}</span><span class="r-tg">${esc(r.tg)}</span></div>
+        <div class="r-meta"><b>${esc(r.name)}</b> – ${esc(r.role)}</div></li>`
+    )
+    .join('');
 }
 
 function addLog(dir, text, opts = {}) {
@@ -540,7 +568,30 @@ function renderScenarioList() {
     .join('');
   document.querySelectorAll('#scenario-list .scenario').forEach((b) => b.addEventListener('click', () => startScenario(b.dataset.id)));
   renderTutorialList();
+  renderFreePanel(best);
 }
+
+function renderFreePanel(best = bestScores()) {
+  const kinds = new Set(settings.freeKinds);
+  $('#free-kinds').innerHTML = Object.entries(FREE_KINDS)
+    .map(([k, v]) => `<label><input type="checkbox" value="${k}" ${kinds.has(k) ? 'checked' : ''} /> ${esc(v)}</label>`)
+    .join('');
+  $('#free-count').value = String(settings.freeCount);
+  $('#free-best').textContent = best.frei !== undefined ? `Bestwert ${best.frei}` : '';
+  document.querySelector('.free-panel').classList.toggle('active', currentId === 'frei');
+}
+
+$('#free-kinds').addEventListener('change', () => {
+  const sel = [...document.querySelectorAll('#free-kinds input:checked')].map((i) => i.value);
+  settings.freeKinds = sel.length ? sel : Object.keys(FREE_KINDS);
+  if (!sel.length) renderFreePanel();
+  saveSettings(settings);
+});
+$('#free-count').addEventListener('change', (e) => {
+  settings.freeCount = Number(e.target.value) || 5;
+  saveSettings(settings);
+});
+$('#free-start').addEventListener('click', () => startScenario('frei'));
 
 function renderTutorialList() {
   const done = new Set(loadTutorialDone());
@@ -562,7 +613,12 @@ function startScenario(id) {
   const seed = Math.floor(Math.random() * 1e9);
   const isLesson = id.startsWith('tut-');
   const exclude = settings.statusPractice ? [] : STATUS_SCENARIOS;
-  scenario = isLesson ? buildLesson(id) : id === 'einsatzdienst' ? buildShift(seed, 4, { exclude }) : buildScenario(id, seed);
+  if (isLesson) scenario = buildLesson(id);
+  else if (id === 'einsatzdienst') scenario = buildShift(seed, 4, { exclude });
+  else if (id === 'frei') {
+    scenario = buildFree(seed, { count: Number(settings.freeCount) || 5, kinds: settings.freeKinds, statusPractice: settings.statusPractice });
+  } else scenario = buildScenario(id, seed);
+  currentTg = scenario.tg;
   if (!settings.statusPractice) withoutStatus(scenario);
   // Fremdverkehr (nicht im Tutorial – dort soll nichts ablenken)
   addTraffic(scenario, isLesson ? 'aus' : settings.traffic, seed + 1);
@@ -605,7 +661,7 @@ function showFinish(summary) {
     })
     .join('');
   const lesson = summary.scenario.tutorial;
-  $('#finish-next').textContent = lesson ? 'Nächste Lektion ▶' : 'Nächste Übung ▶';
+  $('#finish-next').textContent = lesson ? 'Nächste Lektion ▶' : summary.scenario.free ? 'Neuer freier Einsatz ▶' : 'Nächste Übung ▶';
   $('#finish-again').textContent = lesson ? '↻ Lektion wiederholen' : '↻ Nochmal (neue Lage)';
   $('#finish-content').innerHTML = `<div class="finish-score">${summary.score}</div>
     <div class="finish-verdict">${verdict(summary.score)} · ${summary.errorCount} Fehler</div>
@@ -624,7 +680,7 @@ $('#dlg-finish').addEventListener('close', () => {
   } else if (v === 'next') {
     const ids = visibleScenarios().map((s) => s.id);
     const i = ids.indexOf(currentId);
-    startScenario(currentId === 'einsatzdienst' ? 'einsatzdienst' : ids[(i + 1) % ids.length]);
+    startScenario(['einsatzdienst', 'frei'].includes(currentId) ? currentId : ids[(i + 1) % ids.length]);
   }
 });
 

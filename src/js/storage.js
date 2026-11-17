@@ -15,6 +15,8 @@ export const DEFAULT_SETTINGS = {
   traffic: 'normal',
   statusPractice: true,
   volume: 0.7,
+  freeCount: 5,
+  freeKinds: ['mitteilen', 'anfordern', 'erfragen', 'angerufen'],
 };
 
 function read(key, fallback) {
