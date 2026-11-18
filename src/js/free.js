@@ -3,7 +3,7 @@
 // und eine Übersicht der Funkteilnehmer. Wen du rufst und wie du die Nachricht formulierst,
 // entscheidest du selbst – die Gegenstellen reagieren darauf (Rückfragen, „nicht zuständig“, „warten“ …).
 import { callsign, matchCallsign } from './evaluator.js';
-import { numberGroups, wordMatches, fold, digitsOf } from './normalize.js';
+import { numberGroups, wordMatches, fold, digitsOf, placeWords } from './normalize.js';
 import { makeRng, makeContext, streetAny } from './scenarios.js';
 
 export const FREE_KINDS = {
@@ -45,14 +45,24 @@ export function identifyCalled(tokens, roster, own) {
     if (cs.digits) {
       const g = groups.find((gr) => gr.digits === cs.digits);
       if (g) {
-        found.push({ key: st.key, pos: g.start });
+        // Position = Beginn des Rufnamens (Präfix kurz vor der Kennzahl), sonst die Kennzahl selbst
+        let pos = g.start;
+        for (let k = g.start - 1; k >= Math.max(0, g.start - 8); k--) {
+          if (wordMatches(tokens[k].t, cs.prefix)) {
+            pos = k;
+            break;
+          }
+          if (tokens[k].num !== null || ['von', 'hier'].includes(tokens[k].t)) break;
+        }
+        found.push({ key: st.key, pos, numbered: true });
         continue;
       }
     } else {
-      // Rufname ohne Nummer (Leitstelle): Präfix + Ort, danach keine Nummer
-      const place = fold(cs.place);
-      for (let i = 0; i < tokens.length - 1; i++) {
-        if (wordMatches(tokens[i].t, cs.prefix) && wordMatches(tokens[i + 1].t, place) && !(tokens[i + 2] && tokens[i + 2].num !== null)) {
+      // Rufname ohne Nummer (Leitstelle): Präfix + Ort (auch mehrteilig), danach keine Nummer
+      const place = placeWords(cs.place);
+      for (let i = 0; i < tokens.length - place.length; i++) {
+        const after = tokens[i + 1 + place.length];
+        if (wordMatches(tokens[i].t, cs.prefix) && place.every((w, k) => wordMatches(tokens[i + 1 + k].t, w)) && !(after && after.num !== null)) {
           found.push({ key: st.key, pos: i });
           break;
         }
@@ -73,7 +83,9 @@ export function identifyCalled(tokens, roster, own) {
   }
   const ownM = own ? matchCallsign(tokens, own) : { present: false };
   const others = found.filter((f) => !(ownM.present && own.digits && roster[f.key].cs.digits === own.digits));
-  others.sort((a, b) => a.pos - b.pos);
+  // Bei gleichem Beginn gewinnt der Rufname mit Kennzahl (genauer): "Florian Frankfurt am Main 1/10/1"
+  // ist die Feuerwehr, nicht die Leitstelle "Florian Frankfurt".
+  others.sort((a, b) => a.pos - b.pos || (b.numbered ? 1 : 0) - (a.numbered ? 1 : 0));
   return others[0] || null;
 }
 
@@ -753,9 +765,9 @@ export const FREE_TEMPLATE_IDS = TEMPLATES.map((t) => t.id);
  * Baut eine Übung im freien Modus: mehrere zufällige Aufgaben in einem gemeinsamen Einsatz.
  * opts: { count, kinds: ['mitteilen', …], statusPractice }
  */
-export function buildFree(seed, { count = 5, kinds = Object.keys(FREE_KINDS), statusPractice = true } = {}) {
+export function buildFree(seed, { count = 5, kinds = Object.keys(FREE_KINDS), statusPractice = true, ort, lstOrt } = {}) {
   const rnd = makeRng(seed);
-  const ctx = makeContext(rnd);
+  const ctx = makeContext(rnd, { ort, lstOrt });
   const roster = freeRoster(ctx);
   const pool = TEMPLATES.filter((t) => kinds.includes(t.type));
   const usable = pool.length ? pool : TEMPLATES;

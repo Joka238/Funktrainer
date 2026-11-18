@@ -5,7 +5,7 @@ import { MicRecorder } from './mic.js';
 import { Recognizer, MODELS } from './stt.js';
 import { Radio } from './radio.js';
 import { Engine } from './engine.js';
-import { SCENARIOS, TALKGROUPS, STATUS_TEXT, STATUS_SCENARIOS, buildScenario, buildShift, withoutStatus } from './scenarios.js';
+import { SCENARIOS, TALKGROUPS, STATUS_TEXT, STATUS_SCENARIOS, buildScenario, buildShift, withoutStatus, cleanPlace } from './scenarios.js';
 import { addTraffic } from './traffic.js';
 import { loadSettings, saveSettings, loadHistory, addHistory, clearHistory } from './storage.js';
 import { DIN_2022, DIN_TRAD, NATO } from './spelling.js';
@@ -613,11 +613,12 @@ function startScenario(id) {
   const seed = Math.floor(Math.random() * 1e9);
   const isLesson = id.startsWith('tut-');
   const exclude = settings.statusPractice ? [] : STATUS_SCENARIOS;
-  if (isLesson) scenario = buildLesson(id);
-  else if (id === 'einsatzdienst') scenario = buildShift(seed, 4, { exclude });
+  const place = { ort: settings.ort, lstOrt: settings.lstOrt };
+  if (isLesson) scenario = buildLesson(id, place);
+  else if (id === 'einsatzdienst') scenario = buildShift(seed, 4, { exclude, ...place });
   else if (id === 'frei') {
-    scenario = buildFree(seed, { count: Number(settings.freeCount) || 5, kinds: settings.freeKinds, statusPractice: settings.statusPractice });
-  } else scenario = buildScenario(id, seed);
+    scenario = buildFree(seed, { count: Number(settings.freeCount) || 5, kinds: settings.freeKinds, statusPractice: settings.statusPractice, ...place });
+  } else scenario = buildScenario(id, seed, place);
   currentTg = scenario.tg;
   if (!settings.statusPractice) withoutStatus(scenario);
   // Fremdverkehr (nicht im Tutorial – dort soll nichts ablenken)
@@ -726,6 +727,7 @@ $('#dlg-stats').addEventListener('close', () => {
 
 // ------------------------------------------------------------------ Merkblatt
 function openRules() {
+  const ort = settings.ort || 'Musterstadt';
   const statusRows = Object.entries(STATUS_TEXT)
     .map(([k, v]) => `<tr><td><b>${k}</b></td><td>${v}</td></tr>`)
     .join('');
@@ -749,9 +751,9 @@ function openRules() {
     <section>
       <h3>Gesprächsablauf</h3>
       <div>Anruf:</div>
-      <div class="ex">Heros Musterstadt 21/10 von Heros Musterstadt 21/52, kommen.</div>
+      <div class="ex">Heros ${esc(ort)} 21/10 von Heros ${esc(ort)} 21/52, kommen.</div>
       <div>Antwort:</div>
-      <div class="ex">Hier Heros Musterstadt 21/10, kommen.</div>
+      <div class="ex">Hier Heros ${esc(ort)} 21/10, kommen.</div>
       <div>Nachricht:</div>
       <div class="ex">An Einsatzstelle Hauptstraße 12 eingetroffen, kommen.</div>
       <div>Quittung:</div>
@@ -816,10 +818,21 @@ async function openSettings() {
   $('#set-timeout').value = settings.answerTimeout;
   $('#set-traffic').value = settings.traffic;
   $('#set-status').checked = settings.statusPractice;
+  $('#set-ort').value = settings.ort || '';
+  $('#set-lst').value = settings.lstOrt || '';
+  updatePlaceExamples();
   initUpdateBox();
   $('#dlg-settings').showModal();
 }
 $('#btn-settings').addEventListener('click', openSettings);
+
+function updatePlaceExamples() {
+  const ort = cleanPlace($('#set-ort').value) || 'Musterstadt';
+  $('#set-ort-ex').textContent = ort;
+  $('#set-lst-ex').textContent = cleanPlace($('#set-lst').value) || ort;
+}
+$('#set-ort').addEventListener('input', updatePlaceExamples);
+$('#set-lst').addEventListener('input', updatePlaceExamples);
 $('#dlg-settings').addEventListener('close', () => {
   if ($('#dlg-settings').returnValue !== 'ok') return;
   const prevModel = settings.model;
@@ -834,6 +847,10 @@ $('#dlg-settings').addEventListener('close', () => {
   settings.answerTimeout = Math.max(5, Math.min(60, Number($('#set-timeout').value) || 15));
   settings.traffic = $('#set-traffic').value;
   settings.statusPractice = $('#set-status').checked;
+  const ortChanged = cleanPlace($('#set-ort').value) !== settings.ort || cleanPlace($('#set-lst').value) !== settings.lstOrt;
+  settings.ort = cleanPlace($('#set-ort').value);
+  settings.lstOrt = cleanPlace($('#set-lst').value);
+  if (ortChanged && engine.running) toast('Der neue Ort gilt ab der nächsten Übung.', 'info');
   renderScenarioList();
   saveSettings(settings);
 

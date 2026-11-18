@@ -175,6 +175,14 @@
           </details>
         </div>
         <div class="form-grid">
+          <label>Ortsverband (Ort im Rufnamen)
+            <input type="text" id="set-ort" maxlength="40" placeholder="leer = zufälliger Ort, z. B. Musterstadt" autocomplete="off" />
+            <small class="muted">Dein Rufname wird dann z. B. „Heros <span id="set-ort-ex">Musterstadt</span> 21/52“.</small>
+          </label>
+          <label>Leitstelle (Ort im Rufnamen, optional)
+            <input type="text" id="set-lst" maxlength="40" placeholder="leer = wie der Ortsverband" autocomplete="off" />
+            <small class="muted">Z. B. „Florian <span id="set-lst-ex">Musterstadt</span>“ – oft der Landkreis.</small>
+          </label>
           <label>Funkart
             <select id="set-mode">
               <option value="digital">Digitalfunk (TETRA) – Sendeerlaubniston</option>

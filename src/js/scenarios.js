@@ -62,15 +62,32 @@ export function streetAny(street) {
   return out;
 }
 
-/** Erzeugt den Kontext (Rufnamen, Orte) für ein Szenario. */
-export function makeContext(rnd) {
-  const ort = rnd.pick(ORTE);
+/**
+ * Ortsname aus den Einstellungen bereinigen: nur Buchstaben, Leerzeichen, Bindestrich und Punkt
+ * (keine Ziffern – die würden mit den Kennzahlen der Rufnamen verwechselt). Leer = kein eigener Ort.
+ */
+export function cleanPlace(s) {
+  return String(s || '')
+    .replace(/[^\p{L}\s.-]/gu, '')
+    .replace(/\s+/g, ' ')
+    .replace(/^[\s.-]+|[\s.-]+$/g, '')
+    .slice(0, 40);
+}
+
+/**
+ * Erzeugt den Kontext (Rufnamen, Orte) für ein Szenario.
+ * opts.ort = eigener Ortsverband, opts.lstOrt = Ort im Rufnamen der Leitstelle (Standard: wie der OV).
+ */
+export function makeContext(rnd, opts = {}) {
+  const picked = rnd.pick(ORTE);
+  const ort = cleanPlace(opts.ort) || picked;
+  const lstOrt = cleanPlace(opts.lstOrt) || ort;
   const zug = rnd.int(1, 2);
   const own = callsign('Heros', ort, `2${zug}/52`);
   const ztr = callsign('Heros', ort, `2${zug}/10`);
   const sib = rnd() < 0.5 ? callsign('Heros', ort, `2${3 - zug}/52`) : callsign('Heros', ort, `2${zug}/53`);
   const fgr = callsign('Heros', ort, `2${zug}/62`);
-  const lst = callsign('Florian', ort);
+  const lst = callsign('Florian', lstOrt);
   const street = rnd.pick(STRASSEN);
   const nr = rnd.int(2, 48);
   return {
@@ -1106,9 +1123,9 @@ export function withoutStatus(scenario) {
 }
 
 /** Baut ein Szenario mit zufälligem Kontext. */
-export function buildScenario(id, seed) {
+export function buildScenario(id, seed, opts = {}) {
   const rnd = makeRng(seed);
-  const ctx = makeContext(rnd);
+  const ctx = makeContext(rnd, opts);
   const def = SCENARIOS.find((s) => s.id === id);
   if (!def) throw new Error(`Unbekanntes Szenario: ${id}`);
   const built = def.build(ctx);
@@ -1116,9 +1133,9 @@ export function buildScenario(id, seed) {
 }
 
 /** "Einsatzdienst": mehrere zufällige Szenarien hintereinander (gleicher Kontext). */
-export function buildShift(seed, count = 4, { exclude = [] } = {}) {
+export function buildShift(seed, count = 4, { exclude = [], ...opts } = {}) {
   const rnd = makeRng(seed);
-  const ctx = makeContext(rnd);
+  const ctx = makeContext(rnd, opts);
   const ids = SCENARIOS.map((s) => s.id).filter((id) => !exclude.includes(id));
   const chosen = [];
   while (chosen.length < count) {

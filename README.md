@@ -84,6 +84,8 @@ In der App unter **Einstellungen → Nach Updates suchen**: Die neue Version wir
 
 Rufnamen, Orte, Adressen und Lagen werden bei jedem Durchlauf zufällig erzeugt. So lernst du keine festen Antworten auswendig.
 
+**Eigener Ortsverband:** Unter *Einstellungen → Ortsverband* trägst du deinen OV ein (z. B. „Bad Kreuznach“) – dann funkst du in allen Übungen, im freien Modus und im Tutorial als „Heros Bad Kreuznach …“. Optional bekommt die Leitstelle einen eigenen Ort (z. B. „Florian Main-Kinzig“). Leer lassen = zufälliger Ort wie bisher.
+
 ### Freier Modus
 
 Im freien Modus gibt es keinen vorgegebenen Gesprächsablauf. Du bekommst nur eine Anweisung, z. B. „Euch geht der Kraftstoff aus, ihr braucht 40 Liter Diesel“, und eine **Übersicht der Funkteilnehmer** mit Rufname, Zuständigkeit und Gesprächsgruppe (Zugtrupp, Nachbargruppe, Fachgruppen Notversorgung und Logistik, Einsatzleitung Feuerwehr, Rettungswagen, Leitstelle). Wen du rufst und wie du die Nachricht formulierst, entscheidest du selbst.

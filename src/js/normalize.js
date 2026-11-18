@@ -3,6 +3,11 @@
 // erkennt deutsche Zahlwörter und erlaubt unscharfe Wortvergleiche.
 
 /** Kleinschreibung + Umlaute/ß auflösen. */
+/** Wörter eines Ortsnamens wie sie nach tokenize() vorliegen ("Neustadt-Glewe" -> ["neustadt", "glewe"]). */
+export function placeWords(place) {
+  return fold(place).split(/[^a-z0-9]+/).filter(Boolean);
+}
+
 export function fold(s) {
   return String(s || '')
     .toLowerCase()
