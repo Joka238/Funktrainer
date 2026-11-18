@@ -13,6 +13,7 @@ export class Recognizer {
     this.nextId = 1;
     this.files = new Map();
     this.worker = null;
+    this.queue = Promise.resolve();
   }
 
   createWorker() {
@@ -89,12 +90,17 @@ export class Recognizer {
     }
   }
 
+  /** Erkennt eine Aufnahme (16 kHz). Aufträge laufen nacheinander, nie gleichzeitig im Worker. */
   transcribe(samples, words = []) {
     if (this.state !== 'ready') return Promise.reject(new Error('Spracherkennung nicht bereit'));
-    const id = this.nextId++;
-    return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
-      this.worker.postMessage({ type: 'transcribe', id, audio: samples, words }, [samples.buffer]);
-    });
+    const run = () =>
+      new Promise((resolve, reject) => {
+        const id = this.nextId++;
+        this.pending.set(id, { resolve, reject });
+        this.worker.postMessage({ type: 'transcribe', id, audio: samples, words }, [samples.buffer]);
+      });
+    const p = this.queue.then(run, run);
+    this.queue = p.catch(() => {});
+    return p;
   }
 }

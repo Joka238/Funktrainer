@@ -2,13 +2,46 @@
 
 const TARGET_RATE = 16000;
 
+// AudioWorklet: nimmt im Audio-Thread auf (verliert keine Stücke, auch wenn die Oberfläche
+// beschäftigt ist) und liefert die Tonspur schon während des Sprechens – für die Live-Erkennung.
+const WORKLET = `
+class FtCapture extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this.on = false;
+    this.buf = new Float32Array(2048);
+    this.n = 0;
+    this.port.onmessage = (e) => {
+      if (e.data === 'start') { this.on = true; this.n = 0; }
+      else if (e.data === 'stop') { this.flush(); this.on = false; this.port.postMessage('done'); }
+    };
+  }
+  flush() {
+    if (this.n) { this.port.postMessage(this.buf.slice(0, this.n)); this.n = 0; }
+  }
+  process(inputs) {
+    const ch = inputs[0] && inputs[0][0];
+    if (this.on && ch) {
+      for (let i = 0; i < ch.length; i++) {
+        this.buf[this.n++] = ch[i];
+        if (this.n === this.buf.length) this.flush();
+      }
+    }
+    return true;
+  }
+}
+registerProcessor('ft-capture', FtCapture);
+`;
+
 export class MicRecorder {
   /**
-   * capture: 'mediarecorder' (Standard, robust – nimmt im Browser-Audioprozess auf)
+   * capture: 'worklet' (Standard – Audio-Thread, liefert die Tonspur live für die Echtzeit-Erkennung)
+   *          'mediarecorder' (Rückfall ohne Live-Erkennung, falls AudioWorklet fehlt)
    *          'scriptprocessor' (alt – lief im UI-Thread und konnte Tonstücke verlieren)
    */
-  constructor(capture = 'mediarecorder') {
+  constructor(capture = 'worklet') {
     this.capture = capture;
+    this.onChunk = null; // (Float32Array, rate) während der Aufnahme (nur 'worklet')
     this.ctx = null;
     this.stream = null;
     this.recording = false;
@@ -37,6 +70,30 @@ export class MicRecorder {
     this.analyser = this.ctx.createAnalyser();
     this.analyser.fftSize = 1024;
     src.connect(this.analyser);
+    if (this.capture === 'worklet') {
+      try {
+        const url = URL.createObjectURL(new Blob([WORKLET], { type: 'text/javascript' }));
+        await this.ctx.audioWorklet.addModule(url);
+        URL.revokeObjectURL(url);
+        const node = new AudioWorkletNode(this.ctx, 'ft-capture', { numberOfInputs: 1, numberOfOutputs: 1, channelCount: 1 });
+        node.port.onmessage = (e) => {
+          if (e.data === 'done') {
+            if (this.workletDone) this.workletDone();
+            return;
+          }
+          this.chunks.push(e.data);
+          if (this.onChunk) this.onChunk(e.data, this.ctx.sampleRate);
+        };
+        const mute = this.ctx.createGain();
+        mute.gain.value = 0;
+        src.connect(node);
+        node.connect(mute).connect(this.ctx.destination);
+        this.node = node;
+      } catch (e) {
+        console.warn('AudioWorklet nicht verfügbar, nutze MediaRecorder:', e);
+        this.capture = 'mediarecorder';
+      }
+    }
     if (this.capture === 'scriptprocessor') {
       const proc = this.ctx.createScriptProcessor(4096, 1, 1);
       const mute = this.ctx.createGain();
@@ -76,7 +133,9 @@ export class MicRecorder {
     this.chunks = [];
     this.t0 = performance.now();
     this.recording = true;
-    if (this.capture !== 'scriptprocessor') {
+    if (this.capture === 'worklet') {
+      this.node.port.postMessage('start');
+    } else if (this.capture !== 'scriptprocessor') {
       const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
       const mimeType = types.find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t));
       this.recorder = new MediaRecorder(this.stream, { ...(mimeType ? { mimeType } : {}), audioBitsPerSecond: 128000 });
@@ -99,14 +158,21 @@ export class MicRecorder {
 
     let pcm;
     let rate;
-    if (this.capture === 'scriptprocessor') {
-      const total = this.chunks.reduce((a, c) => a + c.length, 0);
-      pcm = new Float32Array(total);
-      let off = 0;
-      for (const c of this.chunks) {
-        pcm.set(c, off);
-        off += c.length;
-      }
+    if (this.capture === 'worklet') {
+      // restliche Samples aus dem Audio-Thread abholen
+      await new Promise((resolve) => {
+        const t = setTimeout(resolve, 500);
+        this.workletDone = () => {
+          clearTimeout(t);
+          this.workletDone = null;
+          resolve();
+        };
+        this.node.port.postMessage('stop');
+      });
+      pcm = concat(this.chunks);
+      rate = this.ctx.sampleRate;
+    } else if (this.capture === 'scriptprocessor') {
+      pcm = concat(this.chunks);
       rate = this.ctx.sampleRate;
     } else {
       const rec = this.recorder;
@@ -132,7 +198,24 @@ export class MicRecorder {
     if (this.ctx) this.ctx.close();
     this.stream = null;
     this.ctx = null;
+    this.node = null;
   }
+}
+
+function concat(chunks) {
+  const total = chunks.reduce((a, c) => a + c.length, 0);
+  const out = new Float32Array(total);
+  let off = 0;
+  for (const c of chunks) {
+    out.set(c, off);
+    off += c.length;
+  }
+  return out;
+}
+
+/** Für die Erkennung aufbereiten: auf 16 kHz umrechnen, Pegel angleichen, Stille anfügen. */
+export async function toAsrSamples(pcm, rate) {
+  return prepareForAsr(await resample(pcm, rate, TARGET_RATE));
 }
 
 /** Pegel angleichen und kurze Stille vorn/hinten anfügen (verbessert die Erkennung). */
@@ -146,7 +229,7 @@ export function prepareForAsr(x) {
   return out;
 }
 
-async function resample(pcm, from, to) {
+export async function resample(pcm, from, to) {
   if (!pcm.length) return new Float32Array(0);
   if (from === to) return pcm;
   const len = Math.ceil((pcm.length * to) / from);

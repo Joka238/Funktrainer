@@ -1,7 +1,8 @@
 // Hauptsteuerung der Oberfläche: verbindet Funkgerät, Audio, Spracherkennung und Übungsablauf.
 import { RadioAudio } from './audio.js';
 import { Voice } from './voice.js';
-import { MicRecorder } from './mic.js';
+import { MicRecorder, toAsrSamples } from './mic.js';
+import { LiveTranscriber } from './live-stt.js';
 import { Recognizer, MODELS } from './stt.js';
 import { Radio } from './radio.js';
 import { Engine } from './engine.js';
@@ -252,11 +253,36 @@ radio.on('emergency', () => {
 });
 
 let pttSession = 0;
+let live = null; // Live-Erkennung der laufenden Sendung
+let livePartial = '';
+let lastLatency = null; // Sekunden vom Loslassen bis zum Ergebnis
+
 radio.on('ptt-down', async () => {
   const id = ++pttSession;
   audio.talkPermit();
+  if (live) live.cancel();
+  live = null;
+  livePartial = '';
   try {
     mic.onLevel = (v) => radio.setLevel(v);
+    // Live-Erkennung: läuft schon während des Sprechens mit
+    mic.onChunk = (chunk, rate) => {
+      if (id !== pttSession || recognizer.state !== 'ready') return;
+      if (!live) {
+        const words = vocabulary();
+        live = new LiveTranscriber({
+          rate,
+          toAsr: toAsrSamples,
+          transcribe: (samples) => recognizer.transcribe(samples, words),
+          onPartial: (text) => {
+            if (id !== pttSession || !radio.tx) return;
+            livePartial = text;
+            renderSttStatus();
+          },
+        });
+      }
+      live.push(chunk);
+    };
     await mic.start();
     if (!radio.tx || id !== pttSession) await mic.stop();
   } catch (e) {
@@ -265,14 +291,23 @@ radio.on('ptt-down', async () => {
 });
 
 radio.on('ptt-up', async () => {
+  const session = live;
+  live = null;
+  livePartial = '';
   let rec;
   try {
     rec = await mic.stop();
   } catch {
     rec = null;
   }
-  if (!rec) return;
+  const tUp = performance.now();
+  if (!rec) {
+    if (session) session.cancel();
+    return;
+  }
   if (!rec.hasSpeech) {
+    if (session) session.cancel();
+    renderSttStatus();
     addLog('note', 'Sendung ohne erkennbare Sprache (zu leise oder Sprechtaste zu kurz gedrückt).');
     if (engine.running && engine.waiting && engine.waiting.type === 'action') {
       coachFeedback('Da kam nichts an. Ist das Mikrofon erlaubt und richtig gewählt (Einstellungen)? Halte die Taste gedrückt, solange du sprichst.', true);
@@ -281,10 +316,12 @@ radio.on('ptt-up', async () => {
   }
   const probe = engine.running && engine.waiting && engine.waiting.type === 'action' && engine.waiting.what === 'ptt';
   if (probe && recognizer.state !== 'ready') {
+    if (session) session.cancel();
     submitTransmission('', rec.durationSec, rec.issues);
     return;
   }
   if (recognizer.state !== 'ready') {
+    if (session) session.cancel();
     toast(
       recognizer.state === 'loading'
         ? 'Die Spracherkennung lädt noch – bitte kurz warten oder die Texteingabe nutzen.'
@@ -297,13 +334,20 @@ radio.on('ptt-up', async () => {
   let text = '';
   try {
     lastRecording = rec.samples.slice(); // Kopie – das Original wird an den Worker übergeben
-    text = await recognizer.transcribe(rec.samples, vocabulary());
+    if (session) {
+      const res = await session.finish();
+      text = res.text;
+      console.info(`[STT] live: ${res.mode}, ${session.runs} Durchläufe`);
+    } else {
+      text = await recognizer.transcribe(rec.samples, vocabulary());
+    }
   } catch (e) {
     toast(`Spracherkennung fehlgeschlagen: ${e.message}`);
     sttBusy = false;
     renderSttStatus();
     return;
   }
+  lastLatency = (performance.now() - tUp) / 1000;
   sttBusy = false;
   renderSttStatus();
   submitTransmission(text, rec.durationSec, rec.issues);
@@ -508,9 +552,13 @@ function renderSttStatus(st) {
   if (st) recognizer.last = st;
   const s = recognizer.last || {};
   const el = $('#stt-status');
-  el.classList.toggle('busy', sttBusy);
+  el.classList.toggle('busy', sttBusy || !!livePartial);
   if (sttBusy) {
     el.textContent = '⏳ Sendung wird ausgewertet …';
+    return;
+  }
+  if (livePartial && radio.tx) {
+    el.textContent = `🎙 live: „${livePartial}“ …`;
     return;
   }
   switch (s.state) {
@@ -523,7 +571,9 @@ function renderSttStatus(st) {
       break;
     }
     case 'ready':
-      el.textContent = `🎙 Spracherkennung bereit – offline (${(s.model || '').split('/').pop()}, ${s.device === 'gpu+cpu' ? 'Grafikchip' : 'Prozessor'})`;
+      el.textContent = `🎙 Spracherkennung bereit – offline (${(s.model || '').split('/').pop()}, ${s.device === 'gpu+cpu' ? 'Grafikchip' : 'Prozessor'})${
+        lastLatency !== null ? ` · letzte Sendung nach ${lastLatency.toFixed(1).replace('.', ',')} s erkannt` : ''
+      }`;
       break;
     case 'error': {
       const net = /fetch|network|load/i.test(s.message || '');

@@ -50,7 +50,7 @@ In der App unter **Einstellungen → Nach Updates suchen**: Die neue Version wir
 - **Simuliertes Handfunkgerät (HRT)** mit Display und Ein-/Ausschalter. Gesprächsgruppe wählst du per Drehknopf oder ◀ ▶, außerdem gibt es Lautstärke, Statustasten (Ziffer + ✓), Notruftaste, Sende-/Empfangs-LED und eine Pegelanzeige beim Senden.
 - **Sprechtaste:** PTT-Knopf am Gerät gedrückt halten oder die **Leertaste**. Im Digitalfunk-Modus ertönt ein Sendeerlaubniston.
 - **Sprachausgabe** der Gegenstellen über die Systemstimmen von macOS bzw. Windows. Mehrere Stationen haben unterschiedliche Stimmlagen.
-- **Offline-Spracherkennung** (Whisper) läuft lokal auf deinem Rechner, nichts wird in die Cloud geschickt.
+- **Offline-Spracherkennung** (Whisper) läuft lokal auf deinem Rechner, nichts wird in die Cloud geschickt. Sie arbeitet **schon während du sprichst**: Bei jeder kurzen Sprechpause wird das bisher Gesagte erkannt (im Statusfeld unter dem Funkgerät live sichtbar), sodass die Auswertung nach dem Loslassen der Sprechtaste meist sofort da ist.
 - **Funkatmosphäre:** Digitalfunk (TETRA) mit Sendeerlaubnis-/Besetzt-/Statustönen oder Analogfunk mit Rauschen und Rauschfahne. Dazu gibt es gestörte Übertragungen.
 - **Live-Bewertung** jeder Sendung (0–100 Punkte) mit konkreten Hinweisen und Musterlösung.
 - **Funkprotokoll** mit optionalem „Mitlesen“. Standardmäßig ist es aus, damit du hörend trainierst.

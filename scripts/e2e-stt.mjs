@@ -1,5 +1,6 @@
 // End-to-End-Test der Spracherkennung in der echten Electron-App (macOS, CI):
-// 1) Aufnahme über ein "falsches Mikrofon" (Chromium spielt eine WAV-Datei ab) + Sprechtaste
+// 1) Aufnahme über ein "falsches Mikrofon" (Chromium spielt eine WAV-Datei ab) + Sprechtaste,
+//    inkl. Live-Erkennung und Zeit vom Loslassen bis zum Ergebnis
 // 2) Dieselbe Aufnahme direkt an die Erkennung (ohne Mikrofon)
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -97,7 +98,7 @@ for (let i = 0; i < SENT.length; i++) {
 
   // 1a) beide Aufnahmewege direkt vergleichen
   const methods = {};
-  for (const method of ['scriptprocessor', 'mediarecorder']) {
+  for (const method of ['worklet', 'mediarecorder', 'scriptprocessor']) {
     methods[method] = await w.evaluate(async ([method, ms]) => {
       const { MicRecorder, recognizer } = window.__funktrainer;
       const m = new MicRecorder(method);
@@ -127,6 +128,7 @@ for (let i = 0; i < SENT.length; i++) {
   await w.evaluate(() => window.__funktrainer.radio.pttDown());
   await w.waitForTimeout(durMs + 400);
   await w.evaluate(() => window.__funktrainer.radio.pttUp());
+  const tUp = Date.now();
   let mic = null;
   for (let k = 0; k < 120; k++) {
     const outs = await w.$$eval('.msg.out', (e) => e.map((x) => x.textContent));
@@ -137,16 +139,18 @@ for (let i = 0; i < SENT.length; i++) {
     if (toast) { mic = 'TOAST: ' + toast; break; }
     await w.waitForTimeout(500);
   }
-  console.log(`  mikrofon: ${mic}`);
+  const latencyMs = Date.now() - tUp;
+  console.log(`  mikrofon: ${mic}  (Ergebnis ${latencyMs} ms nach dem Loslassen)`);
   const errs = logs.filter((l) => /error|warn|STT/i.test(l)).slice(0, 8);
   if (errs.length) console.log('  console:\n    ' + errs.join('\n    '));
-  results.push({ sentence: SENT[i], direct, mic, sp: methods.scriptprocessor.text ?? methods.scriptprocessor.error, mr: methods.mediarecorder.text ?? methods.mediarecorder.error });
+  const txt = (m) => m.text ?? m.error;
+  results.push({ sentence: SENT[i], direct, mic, latencyMs, wl: txt(methods.worklet), sp: txt(methods.scriptprocessor), mr: txt(methods.mediarecorder) });
   await app.close();
 }
 const md = [
-  '| Satz | direkt | ScriptProcessor | MediaRecorder | App (PTT) |',
-  '|---|---|---|---|---|',
-  ...results.map((r) => `| ${r.sentence} | ${r.direct.text ?? r.direct.error} | ${r.sp} | ${r.mr} | ${r.mic} |`),
+  '| Satz | direkt | Worklet | MediaRecorder | ScriptProcessor | App (PTT, live) | Loslassen → Ergebnis |',
+  '|---|---|---|---|---|---|---|',
+  ...results.map((r) => `| ${r.sentence} | ${r.direct.text ?? r.direct.error} | ${r.wl} | ${r.mr} | ${r.sp} | ${r.mic} | ${r.latencyMs} ms |`),
 ].join('\n');
 console.log('\n' + md);
 console.log('\nZeitmessung: ' + JSON.stringify(timing));
