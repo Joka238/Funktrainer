@@ -50,7 +50,7 @@ In der App unter **Einstellungen → Nach Updates suchen**: Die neue Version wir
 - **Simuliertes Handfunkgerät (HRT)** mit Display und Ein-/Ausschalter. Gesprächsgruppe wählst du per Drehknopf oder ◀ ▶, außerdem gibt es Lautstärke, Statustasten (Ziffer + ✓), Notruftaste, Sende-/Empfangs-LED und eine Pegelanzeige beim Senden.
 - **Sprechtaste:** PTT-Knopf am Gerät gedrückt halten oder die **Leertaste**. Im Digitalfunk-Modus ertönt ein Sendeerlaubniston.
 - **Sprachausgabe** der Gegenstellen über die Systemstimmen von macOS bzw. Windows. Mehrere Stationen haben unterschiedliche Stimmlagen.
-- **Offline-Spracherkennung** (Whisper) läuft lokal auf deinem Rechner, nichts wird in die Cloud geschickt.
+- **Offline-Spracherkennung** (Whisper) läuft lokal auf deinem Rechner, nichts wird in die Cloud geschickt. Sie arbeitet **schon während du sprichst**: Bei jeder kurzen Sprechpause wird das bisher Gesagte erkannt (im Statusfeld unter dem Funkgerät live sichtbar), sodass die Auswertung nach dem Loslassen der Sprechtaste meist sofort da ist.
 - **Funkatmosphäre:** Digitalfunk (TETRA) mit Sendeerlaubnis-/Besetzt-/Statustönen oder Analogfunk mit Rauschen und Rauschfahne. Dazu gibt es gestörte Übertragungen.
 - **Live-Bewertung** jeder Sendung (0–100 Punkte) mit konkreten Hinweisen und Musterlösung.
 - **Funkprotokoll** mit optionalem „Mitlesen“. Standardmäßig ist es aus, damit du hörend trainierst.
@@ -83,6 +83,8 @@ In der App unter **Einstellungen → Nach Updates suchen**: Die neue Version wir
 | **Einsatzdienst (Zufall)** | Vier zufällige Übungen hintereinander |
 
 Rufnamen, Orte, Adressen und Lagen werden bei jedem Durchlauf zufällig erzeugt. So lernst du keine festen Antworten auswendig.
+
+**Eigener Ortsverband:** Unter *Einstellungen → Ortsverband* trägst du deinen OV ein (z. B. „Bad Kreuznach“) – dann funkst du in allen Übungen, im freien Modus und im Tutorial als „Heros Bad Kreuznach …“. Optional bekommt die Leitstelle einen eigenen Ort (z. B. „Florian Main-Kinzig“). Leer lassen = zufälliger Ort wie bisher.
 
 ### Freier Modus
 

@@ -1,5 +1,5 @@
 // Bewertung einzelner Funksprüche nach den Regeln der Sprechfunk-Dienstvorschrift (DV 810.3).
-import { tokenize, numberGroups, wordMatches, findPhrase, containsAny, digitsOf, fold } from './normalize.js';
+import { tokenize, numberGroups, wordMatches, findPhrase, containsAny, digitsOf, fold, placeWords as splitPlace } from './normalize.js';
 import { extractSpelling, spellOut } from './spelling.js';
 
 export const PENALTY = { error: 25, warn: 10, minor: 5, info: 0, ok: 0 };
@@ -19,7 +19,10 @@ export function callsign(prefix, place, num = '') {
 /** Sucht einen Rufnamen im Text. */
 export function matchCallsign(tokens, cs) {
   if (!cs) return { present: false };
-  const placeWords = fold(cs.place).split(/\s+/);
+  // Kurze Füllwörter in Ortsnamen ("Frankfurt am Main") nicht als Ortsnachweis werten
+  const all = splitPlace(cs.place);
+  const meaningful = all.filter((w) => w.length >= 3 && !['der', 'die', 'das', 'dem', 'den', 'bei', 'und', 'vor'].includes(w));
+  const placeWords = meaningful.length ? meaningful : all;
   const near = (start, back = 4) => {
     // nur bis zum vorherigen Rufnamen/Trennwort zurückschauen
     let from = start;

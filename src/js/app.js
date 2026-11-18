@@ -1,11 +1,12 @@
 // Hauptsteuerung der Oberfläche: verbindet Funkgerät, Audio, Spracherkennung und Übungsablauf.
 import { RadioAudio } from './audio.js';
 import { Voice } from './voice.js';
-import { MicRecorder } from './mic.js';
+import { MicRecorder, toAsrSamples } from './mic.js';
+import { LiveTranscriber } from './live-stt.js';
 import { Recognizer, MODELS } from './stt.js';
 import { Radio } from './radio.js';
 import { Engine } from './engine.js';
-import { SCENARIOS, TALKGROUPS, STATUS_TEXT, STATUS_SCENARIOS, buildScenario, buildShift, withoutStatus } from './scenarios.js';
+import { SCENARIOS, TALKGROUPS, STATUS_TEXT, STATUS_SCENARIOS, buildScenario, buildShift, withoutStatus, cleanPlace } from './scenarios.js';
 import { addTraffic } from './traffic.js';
 import { loadSettings, saveSettings, loadHistory, addHistory, clearHistory } from './storage.js';
 import { DIN_2022, DIN_TRAD, NATO } from './spelling.js';
@@ -252,11 +253,36 @@ radio.on('emergency', () => {
 });
 
 let pttSession = 0;
+let live = null; // Live-Erkennung der laufenden Sendung
+let livePartial = '';
+let lastLatency = null; // Sekunden vom Loslassen bis zum Ergebnis
+
 radio.on('ptt-down', async () => {
   const id = ++pttSession;
   audio.talkPermit();
+  if (live) live.cancel();
+  live = null;
+  livePartial = '';
   try {
     mic.onLevel = (v) => radio.setLevel(v);
+    // Live-Erkennung: läuft schon während des Sprechens mit
+    mic.onChunk = (chunk, rate) => {
+      if (id !== pttSession || recognizer.state !== 'ready') return;
+      if (!live) {
+        const words = vocabulary();
+        live = new LiveTranscriber({
+          rate,
+          toAsr: toAsrSamples,
+          transcribe: (samples) => recognizer.transcribe(samples, words),
+          onPartial: (text) => {
+            if (id !== pttSession || !radio.tx) return;
+            livePartial = text;
+            renderSttStatus();
+          },
+        });
+      }
+      live.push(chunk);
+    };
     await mic.start();
     if (!radio.tx || id !== pttSession) await mic.stop();
   } catch (e) {
@@ -265,14 +291,23 @@ radio.on('ptt-down', async () => {
 });
 
 radio.on('ptt-up', async () => {
+  const session = live;
+  live = null;
+  livePartial = '';
   let rec;
   try {
     rec = await mic.stop();
   } catch {
     rec = null;
   }
-  if (!rec) return;
+  const tUp = performance.now();
+  if (!rec) {
+    if (session) session.cancel();
+    return;
+  }
   if (!rec.hasSpeech) {
+    if (session) session.cancel();
+    renderSttStatus();
     addLog('note', 'Sendung ohne erkennbare Sprache (zu leise oder Sprechtaste zu kurz gedrückt).');
     if (engine.running && engine.waiting && engine.waiting.type === 'action') {
       coachFeedback('Da kam nichts an. Ist das Mikrofon erlaubt und richtig gewählt (Einstellungen)? Halte die Taste gedrückt, solange du sprichst.', true);
@@ -281,10 +316,12 @@ radio.on('ptt-up', async () => {
   }
   const probe = engine.running && engine.waiting && engine.waiting.type === 'action' && engine.waiting.what === 'ptt';
   if (probe && recognizer.state !== 'ready') {
+    if (session) session.cancel();
     submitTransmission('', rec.durationSec, rec.issues);
     return;
   }
   if (recognizer.state !== 'ready') {
+    if (session) session.cancel();
     toast(
       recognizer.state === 'loading'
         ? 'Die Spracherkennung lädt noch – bitte kurz warten oder die Texteingabe nutzen.'
@@ -297,13 +334,20 @@ radio.on('ptt-up', async () => {
   let text = '';
   try {
     lastRecording = rec.samples.slice(); // Kopie – das Original wird an den Worker übergeben
-    text = await recognizer.transcribe(rec.samples, vocabulary());
+    if (session) {
+      const res = await session.finish();
+      text = res.text;
+      console.info(`[STT] live: ${res.mode}, ${session.runs} Durchläufe`);
+    } else {
+      text = await recognizer.transcribe(rec.samples, vocabulary());
+    }
   } catch (e) {
     toast(`Spracherkennung fehlgeschlagen: ${e.message}`);
     sttBusy = false;
     renderSttStatus();
     return;
   }
+  lastLatency = (performance.now() - tUp) / 1000;
   sttBusy = false;
   renderSttStatus();
   submitTransmission(text, rec.durationSec, rec.issues);
@@ -508,9 +552,13 @@ function renderSttStatus(st) {
   if (st) recognizer.last = st;
   const s = recognizer.last || {};
   const el = $('#stt-status');
-  el.classList.toggle('busy', sttBusy);
+  el.classList.toggle('busy', sttBusy || !!livePartial);
   if (sttBusy) {
     el.textContent = '⏳ Sendung wird ausgewertet …';
+    return;
+  }
+  if (livePartial && radio.tx) {
+    el.textContent = `🎙 live: „${livePartial}“ …`;
     return;
   }
   switch (s.state) {
@@ -523,7 +571,9 @@ function renderSttStatus(st) {
       break;
     }
     case 'ready':
-      el.textContent = `🎙 Spracherkennung bereit – offline (${(s.model || '').split('/').pop()}, ${s.device === 'gpu+cpu' ? 'Grafikchip' : 'Prozessor'})`;
+      el.textContent = `🎙 Spracherkennung bereit – offline (${(s.model || '').split('/').pop()}, ${s.device === 'gpu+cpu' ? 'Grafikchip' : 'Prozessor'})${
+        lastLatency !== null ? ` · letzte Sendung nach ${lastLatency.toFixed(1).replace('.', ',')} s erkannt` : ''
+      }`;
       break;
     case 'error': {
       const net = /fetch|network|load/i.test(s.message || '');
@@ -613,11 +663,12 @@ function startScenario(id) {
   const seed = Math.floor(Math.random() * 1e9);
   const isLesson = id.startsWith('tut-');
   const exclude = settings.statusPractice ? [] : STATUS_SCENARIOS;
-  if (isLesson) scenario = buildLesson(id);
-  else if (id === 'einsatzdienst') scenario = buildShift(seed, 4, { exclude });
+  const place = { ort: settings.ort, lstOrt: settings.lstOrt };
+  if (isLesson) scenario = buildLesson(id, place);
+  else if (id === 'einsatzdienst') scenario = buildShift(seed, 4, { exclude, ...place });
   else if (id === 'frei') {
-    scenario = buildFree(seed, { count: Number(settings.freeCount) || 5, kinds: settings.freeKinds, statusPractice: settings.statusPractice });
-  } else scenario = buildScenario(id, seed);
+    scenario = buildFree(seed, { count: Number(settings.freeCount) || 5, kinds: settings.freeKinds, statusPractice: settings.statusPractice, ...place });
+  } else scenario = buildScenario(id, seed, place);
   currentTg = scenario.tg;
   if (!settings.statusPractice) withoutStatus(scenario);
   // Fremdverkehr (nicht im Tutorial – dort soll nichts ablenken)
@@ -726,6 +777,7 @@ $('#dlg-stats').addEventListener('close', () => {
 
 // ------------------------------------------------------------------ Merkblatt
 function openRules() {
+  const ort = settings.ort || 'Musterstadt';
   const statusRows = Object.entries(STATUS_TEXT)
     .map(([k, v]) => `<tr><td><b>${k}</b></td><td>${v}</td></tr>`)
     .join('');
@@ -749,9 +801,9 @@ function openRules() {
     <section>
       <h3>Gesprächsablauf</h3>
       <div>Anruf:</div>
-      <div class="ex">Heros Musterstadt 21/10 von Heros Musterstadt 21/52, kommen.</div>
+      <div class="ex">Heros ${esc(ort)} 21/10 von Heros ${esc(ort)} 21/52, kommen.</div>
       <div>Antwort:</div>
-      <div class="ex">Hier Heros Musterstadt 21/10, kommen.</div>
+      <div class="ex">Hier Heros ${esc(ort)} 21/10, kommen.</div>
       <div>Nachricht:</div>
       <div class="ex">An Einsatzstelle Hauptstraße 12 eingetroffen, kommen.</div>
       <div>Quittung:</div>
@@ -816,10 +868,21 @@ async function openSettings() {
   $('#set-timeout').value = settings.answerTimeout;
   $('#set-traffic').value = settings.traffic;
   $('#set-status').checked = settings.statusPractice;
+  $('#set-ort').value = settings.ort || '';
+  $('#set-lst').value = settings.lstOrt || '';
+  updatePlaceExamples();
   initUpdateBox();
   $('#dlg-settings').showModal();
 }
 $('#btn-settings').addEventListener('click', openSettings);
+
+function updatePlaceExamples() {
+  const ort = cleanPlace($('#set-ort').value) || 'Musterstadt';
+  $('#set-ort-ex').textContent = ort;
+  $('#set-lst-ex').textContent = cleanPlace($('#set-lst').value) || ort;
+}
+$('#set-ort').addEventListener('input', updatePlaceExamples);
+$('#set-lst').addEventListener('input', updatePlaceExamples);
 $('#dlg-settings').addEventListener('close', () => {
   if ($('#dlg-settings').returnValue !== 'ok') return;
   const prevModel = settings.model;
@@ -834,6 +897,10 @@ $('#dlg-settings').addEventListener('close', () => {
   settings.answerTimeout = Math.max(5, Math.min(60, Number($('#set-timeout').value) || 15));
   settings.traffic = $('#set-traffic').value;
   settings.statusPractice = $('#set-status').checked;
+  const ortChanged = cleanPlace($('#set-ort').value) !== settings.ort || cleanPlace($('#set-lst').value) !== settings.lstOrt;
+  settings.ort = cleanPlace($('#set-ort').value);
+  settings.lstOrt = cleanPlace($('#set-lst').value);
+  if (ortChanged && engine.running) toast('Der neue Ort gilt ab der nächsten Übung.', 'info');
   renderScenarioList();
   saveSettings(settings);
 

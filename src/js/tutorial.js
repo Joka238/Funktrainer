@@ -1,14 +1,15 @@
 // Tutorial: Schritt-für-Schritt-Lektionen mit Ausbilder-Erklärungen und geführter Praxis.
 import { callsign } from './evaluator.js';
-import { station, streetAny } from './scenarios.js';
+import { station, streetAny, cleanPlace } from './scenarios.js';
 
-function tutorialContext() {
-  const ort = 'Musterstadt';
+function tutorialContext(opts = {}) {
+  const ort = cleanPlace(opts.ort) || 'Musterstadt';
+  const lstOrt = cleanPlace(opts.lstOrt) || ort;
   const own = callsign('Heros', ort, '21/52');
   const ztr = callsign('Heros', ort, '21/10');
   const sib = callsign('Heros', ort, '21/53');
   const fgr = callsign('Heros', ort, '21/62');
-  const lst = callsign('Florian', ort);
+  const lst = callsign('Florian', lstOrt);
   return {
     ort,
     own,
@@ -19,7 +20,7 @@ function tutorialContext() {
     street: 'Lindenweg',
     nr: 12,
     tgEA: 'THW EA 1',
-    unit: 'GKW I, 1. Technischer Zug, OV Musterstadt (Tutorial)',
+    unit: `GKW I, 1. Technischer Zug, OV ${ort} (Tutorial)`,
   };
 }
 
@@ -124,7 +125,7 @@ export const LESSONS = [
             kind: 'explain',
             title: 'Rufnamen',
             text: `Jede Funkstelle hat einen Rufnamen. Beim THW beginnt er mit „Heros“, dann Ort und Kennzahl. Dein Rufname in diesem Tutorial: ${own.full}. Der Zugtrupp heißt ${ztr.full}.`,
-            example: ex(`„${own.full}“  →  gesprochen: Heros Musterstadt einundzwanzig zweiundfünfzig`),
+            example: ex(`„${own.full}“  →  gesprochen: Heros ${c.ort} einundzwanzig zweiundfünfzig`),
           },
           {
             kind: 'explain',
@@ -447,10 +448,10 @@ export const LESSONS = [
   },
 ];
 
-export function buildLesson(id) {
+export function buildLesson(id, opts = {}) {
   const def = LESSONS.find((l) => l.id === id);
   if (!def) throw new Error(`Unbekannte Lektion: ${id}`);
-  const ctx = tutorialContext();
+  const ctx = tutorialContext(opts);
   const built = def.build(ctx);
   return { id: def.id, title: def.title, level: 'Tutorial', desc: def.desc, tutorial: true, ctx, stations: station(ctx), ...built };
 }

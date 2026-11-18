@@ -16,6 +16,8 @@ export const DEFAULT_SETTINGS = {
   statusPractice: true,
   volume: 0.7,
   freeCount: 5,
+  ort: '',
+  lstOrt: '',
   freeKinds: ['mitteilen', 'anfordern', 'erfragen', 'angerufen'],
 };
 
